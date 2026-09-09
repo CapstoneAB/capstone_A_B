@@ -324,6 +324,7 @@
   function changeQty(id, delta) {
     cart[id] = (cart[id] || 0) + delta;
     if (cart[id] <= 0) delete cart[id];
+    if (cast[id] > 20) cart[id] = 20;
     renderCart();
   }
 
