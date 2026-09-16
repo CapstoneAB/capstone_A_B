@@ -152,20 +152,20 @@ Admin Dashboard (aggregated stats)
 
 | Data Item | Risk | Business Impact | Prevention Strategy |
 |---|---|---|---|
-| Product Price | Incorrect value entered, or edited in browser DevTools since it's hardcoded client-side | Customer under/overcharged; lost revenue or customer trust | Server-side price validation at checkout; never trust client-submitted totals |
-| Product ID | Duplicate or mismatched ID when catalogue grows | Wrong product added to cart, wrong price shown | Enforce unique IDs, add validation when catalogue moves to a database |
-| Cart Quantity | `changeQty()` in `shop.html` references an undefined `cast[id]` instead of `cart[id]`, so the intended 20-unit cap never fires | Customer could add unlimited quantity of an item | Fix the typo; add both client- and server-side quantity limits |
-| Cart Total | Computed only client-side, with no server check | Customer could submit a manipulated total at checkout (once a backend exists) | Recalculate subtotal/GST/total server-side before accepting payment |
-| Email Address (Contact form) | No format validation; typoed/fake emails accepted | Support team can't respond to the customer | Add client- and server-side email format validation |
-| Message Body | No length limit or sanitization; could contain malicious script content | Stored/reflected XSS if ever displayed in an admin panel without escaping | Sanitize and escape all user-submitted text before rendering or storing |
-| Contact Form (as a whole) | No CAPTCHA/rate limiting once wired to a backend | Spam or automated abuse of the enquiry form | Add rate limiting and a CAPTCHA/bot check before launch |
-| Username / Password | Not implemented yet — no plan documented for hashing/storage | Account compromise, credential leaks | Use a proven auth library, hash passwords (e.g. bcrypt), never store plaintext |
-| User Role | No authorization model implemented yet | A regular customer could reach admin-only features once they exist | Enforce server-side role checks on every admin route/action, not just hiding UI |
-| Order Number | Not implemented yet; risk of collisions if generated client-side | Two orders could get the same reference, causing fulfillment errors | Generate order numbers server-side with a guaranteed-unique strategy |
-| Payment Status | Not implemented yet; risk of trusting a client-reported "paid" flag | Customer could receive goods without paying | Only mark an order paid based on a server-verified payment provider callback |
-| Tracking Number / Delivery Status | Not implemented yet; manual entry errors possible | Customer given wrong delivery info, support overhead | Integrate directly with courier APIs rather than manual entry |
+| Product Price | Value tampered with in browser DevTools | Customer under/overcharged | Validate price server-side |
+| Product ID | Duplicate IDs as catalogue grows | Wrong product/price shown | Enforce unique IDs |
+| Cart Quantity | Quantity cap bug (`cast[id]` typo) never fires | Unlimited quantity addable | Fix typo; add quantity limits |
+| Cart Total | Calculated only in the browser | Total manipulated at checkout | Recalculate total server-side |
+| Email Address | No format validation | Support can't reply to customer | Add email format validation |
+| Message Body | No sanitization of free text | XSS if shown in an admin panel | Sanitize/escape all input |
+| Contact Form | No CAPTCHA or rate limiting | Spam/bot abuse | Add rate limiting + CAPTCHA |
+| Username / Password | No hashing/storage plan yet | Account/credential compromise | Hash passwords (e.g. bcrypt) |
+| User Role | No authorization checks yet | Customer reaches admin features | Enforce role checks server-side |
+| Order Number | Could collide if made client-side | Duplicate order references | Generate order numbers server-side |
+| Payment Status | Client-reported "paid" flag trusted | Goods shipped without payment | Verify payment via provider callback |
+| Delivery Status | Manual entry, no courier integration | Wrong delivery info shown | Integrate with courier API |
 
-That's 12 risks, covering both what exists today and the gaps that matter most once Order Processing/User Management are built.
+12 risks total — covering both today's build and the gaps to close before Order Processing/User Management are built.
 
 ---
 
