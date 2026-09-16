@@ -2,90 +2,197 @@
 
 **Project:** Buildmart (Secure Retail System) — Capstone A
 **Author:** Kalyan
-**Scope:** `index.html`, `shop.html`, `contact.html`, `about.html` (current front-end-only implementation, no backend yet)
+**Scope:** current codebase (`index.html`, `shop.html`, `contact.html`, `about.html`) plus the modules named in the Buildmart delivery plan that are not built yet.
 
-This document covers the three Week 2 deliverables: a data inventory, a data flow diagram, and a data risk analysis, based on the data actually collected and processed by the site today.
-
----
-
-## 1. Data Inventory
-
-| # | Data Element | Source (page/component) | Category | Sensitivity | Where it lives today | Persisted? |
-|---|---------------|--------------------------|----------|--------------|------------------------|------------|
-| 1 | First name | `contact.html` form | PII | Low–Medium | Browser DOM only (no `action`/handler wired up) | No |
-| 2 | Last name | `contact.html` form | PII | Low–Medium | Browser DOM only | No |
-| 3 | Email address | `contact.html` form | PII | Medium | Browser DOM only | No |
-| 4 | Subject (enquiry type) | `contact.html` form | Non-PII (context) | Low | Browser DOM only | No |
-| 5 | Message body | `contact.html` form | PII (may contain free text) | Medium | Browser DOM only | No |
-| 6 | Search query | `shop.html` search box | Non-PII | Low | Browser DOM only (search is not wired to any logic yet) | No |
-| 7 | Product catalogue (id, name, price, unit) | `shop.html` `products` array | Business data | Low | Hardcoded client-side JS | No (static) |
-| 8 | Cart contents (`productId → quantity`) | `shop.html` `cart` object | Session/transactional | Low | In-memory JS variable, tab lifetime only | No |
-| 9 | Order total at checkout | `shop.html` `checkout()` | Transactional | Low | Computed client-side, shown in a toast, then discarded | No |
-
-**Notes:**
-- There is currently no backend, database, cookies, or `localStorage` use anywhere in the codebase — all state lives in memory and is lost on page refresh.
-- The contact form has no `action`, `method`, or JS submit handler, so form data is not actually transmitted anywhere yet despite the "🔒 Your information is safe with us" note in `contact.html`.
-- No authentication, accounts, or payment data exist in the current build.
+Data items below are tagged **Implemented** (exists in the current code) or **Planned (Capstone B)** (named in the project's own delivery plan / README as a future module, but not built yet). Keeping that distinction so this document doesn't overstate what the current front-end-only build actually does.
 
 ---
 
-## 2. Data Flow Diagram
+## Activity 1 — Module Data Discovery
 
-```mermaid
-flowchart TD
-    U[User / Browser]
+At least 20 data items across the project's modules:
 
-    subgraph Contact Flow
-        CF[contact.html form fields\nname, email, subject, message]
-        CF -->|submit click| VOID1[No action/handler wired —\ndata is not sent anywhere]
-    end
+**Product Catalogue** *(Implemented — `shop.html`)*
+1. Product ID
+2. Product Name
+3. Product Description / Meta (e.g. "Fibreglass handle")
+4. Price
+5. Unit (each / tin / length / pair)
+6. Product Icon/Image (currently emoji placeholder)
 
-    subgraph Shop Flow
-        SP[shop.html product grid\nhardcoded products array]
-        AC[addToCart / changeQty / removeItem]
-        CART[(In-memory cart object\nproductId -> quantity)]
-        TOT[renderCart totals\nsubtotal / GST / total]
-        CO[checkout button]
+**Shopping Cart** *(Implemented — `shop.html`)*
+7. Product ID (reference into cart)
+8. Quantity
+9. Line Total
+10. Cart Subtotal
+11. GST Amount (10%, backed out of GST-inclusive price)
+12. Cart Total
+13. Cart Item Count (badge)
 
-        SP --> AC --> CART --> TOT --> CO
-        CO -->|clears cart, shows toast| VOID2[No order is sent to a\nserver — nothing persisted]
-    end
+**Contact / Customer Enquiry** *(Implemented — `contact.html`)*
+14. First Name
+15. Last Name
+16. Email Address
+17. Enquiry Subject (General / Technical Support / Billing / Feedback)
+18. Message Body
 
-    U -->|fills form| CF
-    U -->|browses & clicks Add to cart| SP
-    U -->|adjusts qty / removes| AC
-    U -->|clicks Checkout| CO
+**Search** *(Implemented UI, not wired to logic — `shop.html`)*
+19. Search Query Text
 
-    style VOID1 stroke-dasharray: 5 5
-    style VOID2 stroke-dasharray: 5 5
+**Order Processing** *(Planned — Capstone B)*
+20. Order Number
+21. Order Line Items (product + quantity snapshot at time of order)
+22. Payment Status
+
+**User Management** *(Planned — Capstone B)*
+23. Username
+24. Email (account)
+25. Password (hashed)
+26. User Role (Customer / Administrator)
+
+**Order Tracking** *(Planned — Capstone B)*
+27. Tracking Number
+28. Delivery Status
+29. Shipping Date
+
+**Admin Dashboard** *(Planned — Capstone B)*
+30. Total Orders
+31. Active Users
+32. Revenue Statistics
+
+That's 32 items, 19 of them already implemented in the current build.
+
+---
+
+## Activity 2 — Project Data Inventory
+
+| Data Item | Purpose | Who Creates It? | Who Uses It? | Required? |
+|---|---|---|---|---|
+| Product ID | Uniquely identifies a product in the catalogue | Administrator (hardcoded in `shop.html` today) | System (cart logic), Customer (indirectly) | Yes |
+| Product Name | Identifies product | Administrator | Customer | Yes |
+| Product Description/Meta | Gives customers extra detail (material, size) | Administrator | Customer | No |
+| Price | Determines cost to customer | Administrator | Customer, Cart totals logic | Yes |
+| Unit | Clarifies how the product is sold (each/tin/length) | Administrator | Customer | Yes |
+| Product Icon/Image | Visual identification of product | Administrator | Customer | No |
+| Cart Product ID + Quantity | Tracks what a customer intends to buy | Customer (via "Add to cart") | Cart display, totals logic, (future) Order Processing | Yes |
+| Cart Line Total | Shows cost per line item | System (calculated) | Customer | Yes |
+| Cart Subtotal / GST / Total | Shows what the customer will pay | System (calculated) | Customer, (future) Payment step | Yes |
+| Cart Item Count | Shows how many items are in the cart | System (calculated) | Customer | No |
+| First Name / Last Name | Identifies the person making an enquiry | Customer | (future) Support staff | Yes |
+| Email Address | Allows a reply to the enquiry | Customer | (future) Support staff | Yes |
+| Enquiry Subject | Routes the enquiry to the right team | Customer | (future) Support staff | No |
+| Message Body | Describes the customer's question/issue | Customer | (future) Support staff | Yes |
+| Search Query Text | Lets a customer find a product | Customer | (future) Search logic | No |
+| Order Number | Identifies an order | System | Customer, (future) Support/Admin | Yes |
+| Order Line Items | Records what was actually ordered | System | (future) Order Processing, Order Tracking | Yes |
+| Payment Status | Shows whether an order has been paid | System / Payment provider | Customer, (future) Admin | Yes |
+| Username | Identifies an account | Customer | System, Administrator | Yes |
+| Password (hashed) | Authenticates an account | Customer | System (auth) | Yes |
+| User Role | Controls access to admin features | Administrator | System (authorization) | Yes |
+| Tracking Number | Lets a customer track delivery | System / Courier | Customer | Yes |
+| Delivery Status | Shows progress of shipment | Courier / System | Customer | Yes |
+| Shipping Date | Records when an order shipped | System | Customer, Admin | No |
+| Total Orders / Active Users / Revenue Stats | Summarises business performance | System (aggregated) | Administrator | No |
+
+---
+
+## Activity 3 — Data Flow Investigation
+
+**Current, implemented flow (Shop → Cart → Checkout):**
+
+```
+Customer
+   ↓
+Product Browsing (shop.html catalogue)
+   ↓
+Add to Cart (in-memory cart object)
+   ↓
+Cart Review (quantity, subtotal, GST, total)
+   ↓
+Checkout button (client-side only — mock)
+   ↓
+Confirmation toast (cart cleared, nothing persisted)
 ```
 
-**Reading the diagram:** every data flow in the current site begins and ends inside the user's browser tab. There is no network egress, no external API, no analytics/tracking script, and no server component to diagram yet. The dashed boxes mark the two points (contact submit, checkout) where a real "Secure Retail System" would need a backend flow — those are the seams the team should design around next.
+**Current, implemented flow (Contact enquiry):**
+
+```
+Customer
+   ↓
+Contact Form (name, email, subject, message)
+   ↓
+Submit button
+   ↓
+⚠ No handler wired up — data goes nowhere today
+```
+
+**Planned flow once a backend exists (Capstone B):**
+
+```
+Customer
+   ↓
+Product Selection
+   ↓
+Shopping Cart
+   ↓
+Checkout (server-side price/total revalidation)
+   ↓
+Order Processing (order number, payment status)
+   ↓
+Database
+   ↓
+Order Tracking (tracking number, delivery status)
+   ↓
+Admin Dashboard (aggregated stats)
+```
 
 ---
 
-## 3. Data Risk Analysis
+## Activity 4 — Data Quality and Risk Analysis
 
-| # | Risk | Where | Likelihood | Impact | Notes / Mitigation |
-|---|------|-------|------------|--------|----------------------|
-| 1 | Contact form collects PII (name, email, message) with no server, no validation, and no sanitization | `contact.html` | High (as soon as a backend is added) | Medium–High | Add server-side validation + output encoding before rendering message content anywhere (stored/reflected XSS risk); never trust client input. |
-| 2 | Misleading privacy claim — "Your information is safe with us" is shown even though nothing is transmitted or protected yet | `contact.html` | Medium | Medium | Either wire the form to a real, secured endpoint or remove the claim until it's true; add a real privacy notice once a backend exists. |
-| 3 | No CSRF protection planned for future form submission | `contact.html` | Medium (future) | Medium | Use CSRF tokens / SameSite cookies once a backend handler is added. |
-| 4 | No rate limiting / CAPTCHA on contact form | `contact.html` | Medium (future) | Low–Medium | Add rate limiting and bot protection before going live to prevent spam/abuse. |
-| 5 | Client-side price/catalogue data can be viewed and tampered with via DevTools; checkout total is computed entirely client-side | `shop.html` | High | High (if a backend is added) | Any real checkout must recompute prices/totals server-side — never trust the client-submitted total. |
-| 6 | Quantity cap logic references an undefined variable (`cast[id]` instead of `cart[id]`) in `changeQty()`, so the intended 20-unit cap silently fails | `shop.html:327` | High (bug, not exploit) | Low | Data-integrity bug, not a security hole today, but should be fixed — flagged for the team as a code-quality/reliability issue. |
-| 7 | No HTTPS/TLS requirement documented for when data starts leaving the browser | Project-wide | Medium (future) | High | Document and enforce TLS for all future form submissions and API calls carrying PII. |
-| 8 | Cart/session data has no confidentiality requirement today (product IDs/quantities only), but is fully volatile — refreshing the page silently discards a customer's cart | `shop.html` | High | Low (UX, not security) | Not a security risk, but worth noting as a data-availability gap for a later sprint (e.g., `localStorage` cart persistence). |
+| Data Item | Risk | Business Impact | Prevention Strategy |
+|---|---|---|---|
+| Product Price | Incorrect value entered, or edited in browser DevTools since it's hardcoded client-side | Customer under/overcharged; lost revenue or customer trust | Server-side price validation at checkout; never trust client-submitted totals |
+| Product ID | Duplicate or mismatched ID when catalogue grows | Wrong product added to cart, wrong price shown | Enforce unique IDs, add validation when catalogue moves to a database |
+| Cart Quantity | `changeQty()` in `shop.html` references an undefined `cast[id]` instead of `cart[id]`, so the intended 20-unit cap never fires | Customer could add unlimited quantity of an item | Fix the typo; add both client- and server-side quantity limits |
+| Cart Total | Computed only client-side, with no server check | Customer could submit a manipulated total at checkout (once a backend exists) | Recalculate subtotal/GST/total server-side before accepting payment |
+| Email Address (Contact form) | No format validation; typoed/fake emails accepted | Support team can't respond to the customer | Add client- and server-side email format validation |
+| Message Body | No length limit or sanitization; could contain malicious script content | Stored/reflected XSS if ever displayed in an admin panel without escaping | Sanitize and escape all user-submitted text before rendering or storing |
+| Contact Form (as a whole) | No CAPTCHA/rate limiting once wired to a backend | Spam or automated abuse of the enquiry form | Add rate limiting and a CAPTCHA/bot check before launch |
+| Username / Password | Not implemented yet — no plan documented for hashing/storage | Account compromise, credential leaks | Use a proven auth library, hash passwords (e.g. bcrypt), never store plaintext |
+| User Role | No authorization model implemented yet | A regular customer could reach admin-only features once they exist | Enforce server-side role checks on every admin route/action, not just hiding UI |
+| Order Number | Not implemented yet; risk of collisions if generated client-side | Two orders could get the same reference, causing fulfillment errors | Generate order numbers server-side with a guaranteed-unique strategy |
+| Payment Status | Not implemented yet; risk of trusting a client-reported "paid" flag | Customer could receive goods without paying | Only mark an order paid based on a server-verified payment provider callback |
+| Tracking Number / Delivery Status | Not implemented yet; manual entry errors possible | Customer given wrong delivery info, support overhead | Integrate directly with courier APIs rather than manual entry |
 
-**Overall assessment:** the current build is a static front-end demo with no real attack surface for data exfiltration, because no data actually leaves the browser. The risks above are therefore forward-looking — they describe what must be addressed *before* the contact form and checkout flow are connected to a real backend, which is the next logical step toward the "Secure Retail System" goal stated in the README.
+That's 12 risks, covering both what exists today and the gaps that matter most once Order Processing/User Management are built.
 
 ---
 
-## 4. Review Comments & Improvements Log
+## Activity 5 — Planning for Future Development
 
-Use this section to record team review feedback on this document and track resulting action items.
+Draft answers below, written to bring to the team meeting rather than a finalised team decision — flag anything you'd answer differently before we record this as final.
+
+**What information should be stored permanently?**
+Product catalogue, completed orders (line items, totals, payment status), customer accounts, and order tracking history. These are the records the business needs for accounting, support, and repeat customers.
+
+**What information changes frequently?**
+Cart contents (changes every click, and should stay session-only/temporary), stock levels, product prices/promotions, and delivery status on in-flight orders.
+
+**What information should be restricted to administrators?**
+User roles, revenue/aggregated business statistics, the full customer list, and any backend configuration (payment provider keys, etc.). Customers should only ever see their own orders and account data.
+
+**What information should be included in future reports?**
+Total orders and revenue over time, best-selling products, average order value, and enquiry volume/response time from the contact form — useful for both business decisions and for spotting support bottlenecks.
+
+**What information might be required in Capstone B Version 2?**
+User accounts (so a cart/order history can persist across sessions), a real order + payment record, delivery tracking data, and admin-facing analytics — i.e. the four "Planned" modules already named in the README's delivery plan (Order Processing, User Management, Order Tracking, Admin Dashboard).
+
+---
+
+## Review Comments & Improvements Log
 
 | Date | Reviewer | Comment | Resulting Action |
 |------|----------|---------|-------------------|
 | 2026-09-16 | Kalyan (author) | Initial draft based on current `main` branch (no backend yet); flagged the `cast[id]` typo bug found while reviewing `shop.html` for the risk analysis | Opened as PR for team review; typo bug to be filed as a separate issue/fix by whoever owns quantity update |
-
+| 2026-09-16 | Kalyan (author) | Restructured to match the Activity 1–5 worksheet format; separated Implemented vs. Planned (Capstone B) data items so the doc doesn't overstate current functionality | Pushed as an update to the same PR |
