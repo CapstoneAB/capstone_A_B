@@ -46,3 +46,11 @@ test('remove cart item', async () => {
   const r = await request('DELETE','/api/carts/1/items/1');
   assert.equal(r.status,200); assert.equal(r.data.items.length,0);
 });
+test('cart shows GST included in the total', async () => {
+  await request('POST','/api/carts/1/items',{product_id:1,quantity:2});
+  const r = await request('GET','/api/carts/1/items');
+  assert.equal(r.data.total,39.9); assert.equal(r.data.gst_included,3.63);
+});
+test('missing cart returns 404', async () => {
+  assert.equal((await request('GET','/api/carts/99/items')).status,404);
+});
