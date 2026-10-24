@@ -16,7 +16,10 @@ function createApp(databasePath = path.join(__dirname, 'buildmart.db')) {
     WHERE ci.cart_id = ? ORDER BY ci.cart_item_id`);
   const getCart = id => {
     const result = items.all(id);
-    return {cart_id: Number(id), items: result, total: Math.round(result.reduce((sum, item) => sum + item.subtotal, 0) * 100) / 100};
+    const total = Math.round(result.reduce((sum, item) => sum + item.subtotal, 0) * 100) / 100;
+    // Prices are GST-inclusive (same as shop.html), so the GST part is total - total / 1.1
+    const gst = Math.round((total - total / 1.1) * 100) / 100;
+    return {cart_id: Number(id), items: result, gst_included: gst, total};
   };
   const checkCart = (req, res, next) => {
     if (!validId(req.params.id)) return res.status(400).json({error: 'Invalid cart ID'});
