@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const {checkPasswordStrength, hashPassword, verifyPassword} = require('./passwords');
+const {createRequireAuth, passwordChangedAtSeconds} = require('./middleware');
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_]{3,20}$/;
 // Same email check as js/login.js
@@ -24,8 +25,15 @@ function createAuthRouter(db, options) {
   const dummyHash = hashPassword(crypto.randomBytes(16).toString('hex'));
 
   const findByUsername = db.prepare('SELECT user_id FROM users WHERE username = ?');
-  const findByEmail = db.prepare('SELECT user_id, username, email, password_hash FROM users WHERE email = ?');
+  const findByEmail = db.prepare('SELECT user_id, username, email, password_hash, password_changed_at FROM users WHERE email = ?');
   const insertUser = db.prepare('INSERT INTO users(username, email, password_hash) VALUES (?, ?, ?)');
+  const requireAuth = createRequireAuth(db, jwtSecret);
+  const removeExpiredRevoked = db.prepare('DELETE FROM revoked_tokens WHERE expires_at < ?');
+  const revokeToken = db.prepare('INSERT OR IGNORE INTO revoked_tokens(jti, expires_at) VALUES (?, ?)');
+  const logout = db.transaction((jti, expiresAt, now) => {
+    removeExpiredRevoked.run(now);
+    revokeToken.run(jti, expiresAt);
+  });
 
   // Auth responses contain tokens and user details, so browsers and proxies must not cache them
   router.use((_req, res, next) => {
@@ -69,7 +77,10 @@ function createAuthRouter(db, options) {
     const passwordOk = await verifyPassword(password, user ? user.password_hash : await dummyHash);
     if (!user || !passwordOk) return res.status(401).json({error: LOGIN_FAILED});
 
-    const token = jwt.sign({username: user.username}, jwtSecret, {
+    // Right after a password reset, issue the token from the rounded-up change time
+    // (less than a second ahead) so requireAuth doesn't treat it as an old token
+    const issuedAt = Math.max(Math.floor(Date.now() / 1000), passwordChangedAtSeconds(user.password_changed_at));
+    const token = jwt.sign({username: user.username, iat: issuedAt}, jwtSecret, {
       algorithm: 'HS256',
       expiresIn: TOKEN_LIFETIME_SECONDS,
       subject: String(user.user_id),
@@ -77,6 +88,14 @@ function createAuthRouter(db, options) {
     });
     res.json({token, expires_in: TOKEN_LIFETIME_SECONDS, user: publicUser(user)});
   }));
+
+  router.get('/verify', requireAuth, (req, res) => res.json({valid: true, user: req.auth.user}));
+
+  router.post('/logout', requireAuth, (req, res) => {
+    // Old rows are cleared here because a token past its expiry is rejected anyway
+    logout(req.auth.claims.jti, req.auth.claims.exp, Math.floor(Date.now() / 1000));
+    res.json({message: 'Logged out'});
+  });
 
   return router;
 }

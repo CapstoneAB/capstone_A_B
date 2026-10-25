@@ -27,8 +27,9 @@ before(async () => {
   base = `http://127.0.0.1:${server.address().port}`;
 });
 after(async () => {await new Promise(resolve => server.close(resolve)); app.locals.closeDatabase(); fs.rmSync(dir, {recursive:true,force:true});});
-async function request(method, url, body) {
-  const response = await fetch(base + url, {method, headers: {'content-type':'application/json'}, ...(body ? {body:JSON.stringify(body)} : {})});
+async function request(method, url, body, token) {
+  const headers = {'content-type':'application/json', ...(token ? {authorization:`Bearer ${token}`} : {})};
+  const response = await fetch(base + url, {method, headers, ...(body ? {body:JSON.stringify(body)} : {})});
   return {status:response.status, headers:response.headers, data:await response.json()};
 }
 
@@ -183,4 +184,98 @@ test('createApp refuses to start in production without JWT_SECRET', () => {
   } finally {
     for (const [key,value] of Object.entries(saved)) value === undefined ? delete process.env[key] : process.env[key] = value;
   }
+});
+
+// ---- Verify and logout ----
+// Registers a user and logs in, returning the token and the user's id
+async function loginAs(username) {
+  const email = `${username}@example.com`;
+  const reg = await request('POST','/auth/register',{username,email,password:SAMPLE});
+  const r = await request('POST','/auth/login',{email,password:SAMPLE});
+  return {token:r.data.token, userId:reg.data.user_id, email};
+}
+const sign = (payload, options, secret = TEST_SECRET) => jwt.sign(payload, secret, {algorithm:'HS256', expiresIn:3600, jwtid:'test-jti', ...options});
+function changeDatabase(sql, ...params) {
+  const db = new Database(dbFile);
+  try { return db.prepare(sql).run(...params); } finally { db.close(); }
+}
+test('verify with a valid token returns the user', async () => {
+  const {token, userId} = await loginAs('verify_ok');
+  const r = await request('GET','/auth/verify',null,token);
+  assert.equal(r.status,200);
+  assert.deepEqual(r.data,{valid:true,user:{user_id:userId,username:'verify_ok',email:'verify_ok@example.com'}});
+});
+test('verify with no token returns 401', async () => {
+  const r = await request('GET','/auth/verify');
+  assert.equal(r.status,401); assert.equal(r.data.error,'Invalid or expired token');
+  assert.equal(r.headers.get('www-authenticate'),'Bearer');
+});
+test('verify with a token in the wrong header format returns 401', async () => {
+  const {token} = await loginAs('wrong_scheme');
+  const response = await fetch(base + '/auth/verify', {headers:{authorization:`Basic ${token}`}});
+  assert.equal(response.status,401);
+  const noScheme = await fetch(base + '/auth/verify', {headers:{authorization:token}});
+  assert.equal(noScheme.status,401);
+});
+test('verify with a garbage token returns 401', async () => {
+  assert.equal((await request('GET','/auth/verify',null,'not.a.token')).status,401);
+  assert.equal((await request('GET','/auth/verify',null,'garbage')).status,401);
+});
+test('verify with a token signed with a different secret returns 401', async () => {
+  const {userId} = await loginAs('other_secret');
+  const forged = sign({username:'other_secret'},{subject:String(userId)},'some-other-secret');
+  assert.equal((await request('GET','/auth/verify',null,forged)).status,401);
+});
+test('verify with an expired token returns 401', async () => {
+  const {userId} = await loginAs('expired_tok');
+  const now = Math.floor(Date.now() / 1000);
+  // Issued 2 hours ago with a 1 hour lifetime, so it expired an hour ago
+  const expired = sign({username:'expired_tok', iat:now - 7200},{subject:String(userId)});
+  assert.equal((await request('GET','/auth/verify',null,expired)).status,401);
+});
+test('verify refuses an unsigned (alg none) token and other algorithms', async () => {
+  const {userId} = await loginAs('alg_check');
+  const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
+  const now = Math.floor(Date.now() / 1000);
+  const unsigned = `${encode({alg:'none',typ:'JWT'})}.${encode({sub:String(userId),username:'alg_check',jti:'x',iat:now,exp:now + 3600})}.`;
+  assert.equal((await request('GET','/auth/verify',null,unsigned)).status,401);
+  const hs512 = jwt.sign({username:'alg_check'},TEST_SECRET,{algorithm:'HS512',expiresIn:3600,subject:String(userId),jwtid:'y'});
+  assert.equal((await request('GET','/auth/verify',null,hs512)).status,401);
+});
+test('verify refuses a valid signature for a user that does not exist', async () => {
+  assert.equal((await request('GET','/auth/verify',null,sign({username:'ghost'},{subject:'99999'}))).status,401);
+});
+test('after logout the same token gets 401 from verify', async () => {
+  const {token} = await loginAs('logout_ok');
+  assert.equal((await request('GET','/auth/verify',null,token)).status,200);
+  const out = await request('POST','/auth/logout',null,token);
+  assert.equal(out.status,200); assert.equal(out.data.message,'Logged out');
+  assert.equal((await request('GET','/auth/verify',null,token)).status,401);
+  assert.equal((await request('POST','/auth/logout',null,token)).status,401);
+});
+test('logout only revokes that token, not other logins of the same user', async () => {
+  const {token, email} = await loginAs('two_devices');
+  const second = (await request('POST','/auth/login',{email,password:SAMPLE})).data.token;
+  await request('POST','/auth/logout',null,token);
+  assert.equal((await request('GET','/auth/verify',null,second)).status,200);
+});
+test('logout without a token returns 401', async () => {
+  assert.equal((await request('POST','/auth/logout')).status,401);
+});
+test('logout removes expired rows from revoked_tokens', async () => {
+  const {token} = await loginAs('cleanup');
+  changeDatabase('INSERT INTO revoked_tokens(jti, expires_at) VALUES (?, ?)','old-jti',Math.floor(Date.now() / 1000) - 60);
+  await request('POST','/auth/logout',null,token);
+  const db = new Database(dbFile, {readonly:true});
+  const jtis = db.prepare('SELECT jti FROM revoked_tokens').all().map(row => row.jti);
+  db.close();
+  assert.ok(!jtis.includes('old-jti')); assert.ok(jtis.includes(jwt.decode(token).jti));
+});
+test('tokens issued before password_changed_at are rejected, new logins still work', async () => {
+  const {token, userId, email} = await loginAs('pw_changed');
+  changeDatabase('UPDATE users SET password_changed_at = ? WHERE user_id = ?',new Date().toISOString(),userId);
+  assert.equal((await request('GET','/auth/verify',null,token)).status,401);
+  // Logging in straight away (even in the same second) gives a token that works
+  const fresh = (await request('POST','/auth/login',{email,password:SAMPLE})).data.token;
+  assert.equal((await request('GET','/auth/verify',null,fresh)).status,200);
 });
