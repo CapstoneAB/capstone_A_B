@@ -13,6 +13,8 @@ const {checkPasswordStrength, hashPassword, verifyPassword} = require('../auth/p
 const SAMPLE = 'Sample#Pass1';
 const TEST_SECRET = 'test-secret';
 let app, server, base, dir, dbFile;
+// Reset tokens are handed to this list instead of being printed to the console
+const resetTokens = [];
 before(async () => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'buildmart-auth-'));
   dbFile = path.join(dir, 'test.db');
@@ -22,7 +24,7 @@ before(async () => {
     CREATE TABLE carts(cart_id INTEGER PRIMARY KEY,customer_name TEXT);
     CREATE TABLE cart_items(cart_item_id INTEGER PRIMARY KEY,cart_id INTEGER REFERENCES carts(cart_id),product_id INTEGER REFERENCES products(product_id),quantity INTEGER,UNIQUE(cart_id,product_id));`);
   db.close();
-  app = createApp(dbFile, {jwtSecret: TEST_SECRET});
+  app = createApp(dbFile, {jwtSecret: TEST_SECRET, onResetToken: info => resetTokens.push(info)});
   server = await new Promise(resolve => {const s = app.listen(0, () => resolve(s));});
   base = `http://127.0.0.1:${server.address().port}`;
 });
@@ -278,4 +280,91 @@ test('tokens issued before password_changed_at are rejected, new logins still wo
   // Logging in straight away (even in the same second) gives a token that works
   const fresh = (await request('POST','/auth/login',{email,password:SAMPLE})).data.token;
   assert.equal((await request('GET','/auth/verify',null,fresh)).status,200);
+});
+
+// ---- Password reset ----
+const NEW_PASSWORD = 'Changed#Pass2';
+const RESET_MESSAGE = 'If that email is registered, a reset link has been sent.';
+const sha256 = value => require('node:crypto').createHash('sha256').update(value).digest('hex');
+// Asks for a reset and returns the token that the server handed to onResetToken
+async function requestReset(email) {
+  const before = resetTokens.length;
+  const r = await request('POST','/auth/forgot-password',{email});
+  assert.equal(r.status,200); assert.equal(r.data.message,RESET_MESSAGE);
+  assert.equal(resetTokens.length,before + 1);
+  return resetTokens.at(-1).token;
+}
+test('full reset flow: old password stops working, new one works', async () => {
+  const {email, userId} = await loginAs('reset_flow');
+  const token = await requestReset(email.toUpperCase());
+  assert.match(token,/^[0-9a-f]{64}$/); assert.equal(resetTokens.at(-1).userId,userId);
+  const r = await request('POST','/auth/reset-password',{token,password:NEW_PASSWORD});
+  assert.equal(r.status,200);
+  assert.equal((await request('POST','/auth/login',{email,password:SAMPLE})).status,401);
+  const login = await request('POST','/auth/login',{email,password:NEW_PASSWORD});
+  assert.equal(login.status,200);
+  assert.equal((await request('GET','/auth/verify',null,login.data.token)).status,200);
+});
+test('an old login token stops working after a reset', async () => {
+  const {token: oldJwt, email} = await loginAs('reset_jwt');
+  assert.equal((await request('GET','/auth/verify',null,oldJwt)).status,200);
+  const token = await requestReset(email);
+  assert.equal((await request('POST','/auth/reset-password',{token,password:NEW_PASSWORD})).status,200);
+  assert.equal((await request('GET','/auth/verify',null,oldJwt)).status,401);
+});
+test('unknown email gets exactly the same response and no token is made', async () => {
+  const before = resetTokens.length;
+  await loginAs('reset_known');
+  const known = await request('POST','/auth/forgot-password',{email:'reset_known@example.com'});
+  const unknown = await request('POST','/auth/forgot-password',{email:'nobody-here@example.com'});
+  const empty = await request('POST','/auth/forgot-password',{});
+  for (const r of [unknown, empty]) {assert.equal(r.status,known.status); assert.deepEqual(r.data,known.data);}
+  assert.equal(resetTokens.length,before + 1);
+});
+test('only the SHA-256 hash of the reset token is stored', async () => {
+  const {email, userId} = await loginAs('reset_hash');
+  const token = await requestReset(email);
+  const db = new Database(dbFile, {readonly:true});
+  const rows = db.prepare('SELECT * FROM password_resets WHERE user_id = ?').all(userId);
+  db.close();
+  assert.equal(rows.length,1); assert.equal(rows[0].token_hash,sha256(token)); assert.equal(rows[0].used_at,null);
+  assert.ok(!Object.values(rows[0]).includes(token));
+  // Expires 30 minutes from now (allowing a few seconds for the test to run)
+  const left = rows[0].expires_at - Math.floor(Date.now() / 1000);
+  assert.ok(left > 1790 && left <= 1800,`expected about 1800 seconds, got ${left}`);
+});
+test('a reset token cannot be used twice', async () => {
+  const {email} = await loginAs('reset_twice');
+  const token = await requestReset(email);
+  assert.equal((await request('POST','/auth/reset-password',{token,password:NEW_PASSWORD})).status,200);
+  const again = await request('POST','/auth/reset-password',{token,password:'Another#Pass3'});
+  assert.equal(again.status,400); assert.equal(again.data.error,'This reset link is invalid or has expired.');
+  assert.equal((await request('POST','/auth/login',{email,password:NEW_PASSWORD})).status,200);
+});
+test('an expired reset token is rejected', async () => {
+  const {email} = await loginAs('reset_expired');
+  const token = await requestReset(email);
+  changeDatabase('UPDATE password_resets SET expires_at = ? WHERE token_hash = ?',Math.floor(Date.now() / 1000) - 1,sha256(token));
+  assert.equal((await request('POST','/auth/reset-password',{token,password:NEW_PASSWORD})).status,400);
+  assert.equal((await request('POST','/auth/login',{email,password:SAMPLE})).status,200);
+});
+test('a weak new password is rejected and the link can still be used', async () => {
+  const {email} = await loginAs('reset_weak');
+  const token = await requestReset(email);
+  const weak = await request('POST','/auth/reset-password',{token,password:'weakpass'});
+  assert.equal(weak.status,400); assert.match(weak.data.fields.password,/one uppercase letter/);
+  assert.equal((await request('POST','/auth/login',{email,password:SAMPLE})).status,200);
+  assert.equal((await request('POST','/auth/reset-password',{token,password:NEW_PASSWORD})).status,200);
+});
+test('a made-up or missing reset token is rejected', async () => {
+  for (const token of ['0'.repeat(64),'not-a-token','',undefined,123])
+    assert.equal((await request('POST','/auth/reset-password',{token,password:NEW_PASSWORD})).status,400);
+});
+test('asking for a new reset link cancels the older one', async () => {
+  const {email} = await loginAs('reset_newer');
+  const first = await requestReset(email);
+  const second = await requestReset(email);
+  assert.notEqual(first,second);
+  assert.equal((await request('POST','/auth/reset-password',{token:first,password:NEW_PASSWORD})).status,400);
+  assert.equal((await request('POST','/auth/reset-password',{token:second,password:NEW_PASSWORD})).status,200);
 });
