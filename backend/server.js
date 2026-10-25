@@ -1,6 +1,7 @@
 const express = require('express');
 const Database = require('better-sqlite3');
 const path = require('path');
+const {ensureAuthTables} = require('./auth/schema');
 // Same per-item limit as the front end (shop.html)
 const MAX_QUANTITY = 20;
 
@@ -8,6 +9,8 @@ function createApp(databasePath = path.join(__dirname, 'buildmart.db')) {
   const app = express();
   const db = new Database(databasePath);
   db.pragma('foreign_keys = ON');
+  // Adds the user tables to an existing buildmart.db without re-running init-db
+  ensureAuthTables(db);
   app.use(express.json());
 
   const validId = value => /^[1-9]\d*$/.test(String(value)) && Number.isSafeInteger(Number(value));
