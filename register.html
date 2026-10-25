@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register — Buildmart</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/login.css">
+<link rel="stylesheet" href="css/register.css">
+<script src="js/register.js" defer></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="bar">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#e08a1e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7l-7 7-3-3"/><path d="M3 21l9-9"/><path d="M14.5 3.5a3 3 0 0 1 4 4l-4-4z"/></svg>
+      Build<span>mart</span>
+    </div>
+    <nav class="site-nav">
+      <a href="index.html">Home</a>
+      <a href="shop.html">Shop</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+      <a href="login.html">Login</a>
+    </nav>
+    <a href="shop.html" class="cart-btn">
+      Cart
+      <span class="cart-count">0</span>
+    </a>
+  </div>
+</header>
+
+<main class="login-wrap">
+  <div class="login-card">
+    <h1 class="page-title">Create your Buildmart account</h1>
+    <p class="page-sub">It only takes a minute. All fields are required.</p>
+
+    <!-- method="post" so the password can never end up in the URL, even if the script fails to load -->
+    <form id="registerForm" class="login-form" method="post" novalidate>
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. alex_builds" aria-describedby="usernameHint usernameError" required>
+        <p class="field-hint" id="usernameHint">3 to 20 characters: letters, numbers or underscore.</p>
+        <p class="field-error" id="usernameError"></p>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com" aria-describedby="emailError" required>
+        <p class="field-error" id="emailError"></p>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="password-row">
+          <input type="password" id="password" name="password" autocomplete="new-password" placeholder="At least 8 characters" aria-describedby="strengthText passwordRules passwordError" required>
+          <button type="button" id="togglePassword" class="toggle-password" aria-controls="password confirmPassword" aria-pressed="false">Show password</button>
+        </div>
+        <div class="strength">
+          <div id="strengthMeter" class="strength-meter" aria-hidden="true"><span class="strength-fill"></span></div>
+          <p id="strengthText" class="strength-text"></p>
+        </div>
+        <ul id="passwordRules" class="password-rules">
+          <li data-rule="length"><span class="rule-state visually-hidden">Not yet: </span>At least 8 characters</li>
+          <li data-rule="maxBytes"><span class="rule-state visually-hidden">Not yet: </span>No more than 72 characters</li>
+          <li data-rule="upper"><span class="rule-state visually-hidden">Not yet: </span>One uppercase letter</li>
+          <li data-rule="lower"><span class="rule-state visually-hidden">Not yet: </span>One lowercase letter</li>
+          <li data-rule="number"><span class="rule-state visually-hidden">Not yet: </span>One number</li>
+          <li data-rule="symbol"><span class="rule-state visually-hidden">Not yet: </span>One symbol, like ! # or @</li>
+        </ul>
+        <p class="field-error" id="passwordError"></p>
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirm password</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" placeholder="Type your password again" aria-describedby="confirmPasswordError confirmPasswordMatch" required>
+        <p class="field-error" id="confirmPasswordError"></p>
+        <p class="field-ok" id="confirmPasswordMatch"></p>
+      </div>
+
+      <div id="formMessage" class="form-message" aria-live="polite"></div>
+
+      <button type="submit" id="registerSubmit" class="btn btn-primary login-submit">Create account</button>
+    </form>
+
+    <p class="login-register">Already have an account? <a href="login.html">Log in</a></p>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <h4>Buildmart</h4>
+      <p>Hardware &amp; home essentials for every project, big or small.</p>
+    </div>
+    <div>
+      <h4>Quick Links</h4>
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="shop.html">Shop</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <p>support@buildmart.com</p>
+      <p>Mon–Fri: 9am–5pm</p>
+    </div>
+  </div>
+  <div class="footer-bottom">&copy; 2026 Buildmart. Capstone project — Secure Retail System.</div>
+</footer>
+
+</body>
+</html>

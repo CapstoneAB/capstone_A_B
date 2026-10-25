@@ -1,0 +1,99 @@
+/* ==========================================================================
+   Buildmart — Registration page styles
+   Used by: register.html (loaded after css/style.css and css/login.css,
+   so it reuses the login card, fields, errors and message area)
+   ========================================================================== */
+
+/* ---------- Hints and "passwords match" ---------- */
+.field-hint {
+  color: var(--muted);
+  font-size: .82rem;
+  margin-top: 6px;
+}
+.field-ok {
+  color: var(--green);
+  font-size: .85rem;
+  font-weight: 600;
+  margin-top: 6px;
+}
+.field-ok:empty { display: none; }
+
+/* ---------- Password strength meter ---------- */
+.strength {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.strength-meter {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: #e8e8e8;
+  overflow: hidden;
+}
+.strength-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 4px;
+  transition: width .2s ease, background .2s ease;
+}
+.strength-meter.is-weak .strength-fill { width: 33%; background: var(--error); }
+.strength-meter.is-fair .strength-fill { width: 66%; background: var(--amber); }
+.strength-meter.is-strong .strength-fill { width: 100%; background: var(--green); }
+.strength-text {
+  min-width: 110px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: right;
+}
+
+/* ---------- Live password rules checklist ---------- */
+.password-rules {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  margin-top: 10px;
+  font-size: .82rem;
+  color: var(--muted);
+}
+.password-rules li {
+  position: relative;
+  padding-left: 20px;
+}
+.password-rules li::before {
+  content: "\2022";
+  position: absolute;
+  left: 4px;
+  font-weight: 700;
+}
+.password-rules li.is-met { color: var(--green); }
+.password-rules li.is-met::before { content: "\2713"; left: 2px; }
+
+/* Read by screen readers only ("Done:" / "Not yet:" before each rule) */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- Submit button while the request is running ---------- */
+.login-submit:disabled {
+  opacity: .65;
+  cursor: wait;
+  transform: none;
+}
+
+/* ---------- Small screens ---------- */
+@media (max-width: 480px) {
+  .password-rules { grid-template-columns: 1fr; }
+  .password-row { flex-wrap: wrap; }
+  .toggle-password { padding: 10px 14px; }
+}
