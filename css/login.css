@@ -1,0 +1,175 @@
+/* ==========================================================================
+   Buildmart — Login page styles
+   Used by: login.html (loaded after css/style.css)
+   ========================================================================== */
+
+/* ---------- Layout ---------- */
+.login-wrap {
+  min-height: calc(100vh - 130px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 20px;
+}
+
+.login-card {
+  --error: #c0392b;
+  --error-bg: #fdecea;
+  --success-bg: #e8f3ef;
+
+  width: 100%;
+  max-width: 440px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 36px 32px;
+}
+.login-card .page-title { color: var(--green-dark); }
+
+/* ---------- Form fields ---------- */
+.login-form .form-group { margin-bottom: 18px; }
+
+.login-form label {
+  display: block;
+  font-size: .82rem;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.login-form input[type="email"],
+.login-form input[type="password"],
+.login-form input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 14px;
+  border: 2px solid #e8e8e8;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--ink);
+  background: #fafafa;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.login-form input:focus {
+  border-color: var(--green);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(31, 95, 75, .1);
+}
+
+/* Show / hide password button sits beside the field */
+.password-row {
+  display: flex;
+  gap: 8px;
+}
+.toggle-password {
+  flex-shrink: 0;
+  padding: 0 14px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--green-dark);
+  font-family: inherit;
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.toggle-password:hover { border-color: var(--green); }
+
+/* ---------- Error state ---------- */
+.login-form input[aria-invalid="true"] {
+  border-color: var(--error);
+  background: #fff;
+}
+.login-form input[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px rgba(192, 57, 43, .15);
+}
+.field-error {
+  color: var(--error);
+  font-size: .85rem;
+  margin-top: 6px;
+}
+.field-error:empty { display: none; }
+
+/* ---------- Remember me / forgot password ---------- */
+.form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+  font-size: .9rem;
+}
+.login-form .remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: .9rem;
+  font-weight: 500;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.remember input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--green);
+}
+
+.login-card a:not(.btn) {
+  color: var(--green);
+  font-weight: 600;
+}
+.login-card a:not(.btn):hover { text-decoration: underline; }
+
+/* ---------- Message area ---------- */
+.form-message:empty { display: none; }
+.form-message {
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-size: .9rem;
+}
+.form-message.is-error {
+  background: var(--error-bg);
+  color: var(--error);
+  border: 1px solid var(--error);
+}
+.form-message.is-success {
+  background: var(--success-bg);
+  color: var(--green-dark);
+  border: 1px solid var(--green);
+}
+
+/* ---------- Submit + register link ---------- */
+.login-submit { width: 100%; font-size: 1rem; }
+
+.login-register {
+  text-align: center;
+  margin-top: 20px;
+  font-size: .9rem;
+  color: var(--muted);
+}
+
+/* ---------- Keyboard focus ---------- */
+.login-card a:focus-visible,
+.login-card button:focus-visible,
+.remember input:focus-visible {
+  outline: 3px solid var(--amber);
+  outline-offset: 2px;
+}
+
+/* ---------- Small screens ---------- */
+@media (max-width: 480px) {
+  .login-wrap { padding: 28px 16px; align-items: flex-start; }
+  .login-card { padding: 28px 20px; }
+}

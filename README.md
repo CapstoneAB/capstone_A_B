@@ -8,6 +8,7 @@ Features
     About page with project overview, description, and the team's delivery plan
     Shop page - the Shopping Cart module: product catalogue, add to cart, cart drawer, quantity controls, and GST-inclusive price calculation
     Contact page with name, email, subject, and message fields
+    Login page (UI only, sign-in planned for Version 2)
     Shared stylesheet for a consistent colour scheme, typography, and responsive layout across all pages
 
 Project Structure
@@ -17,7 +18,10 @@ capstone_A_B/
 ├── about.html         # About page (project overview + delivery plan)
 ├── shop.html          # Shopping cart module
 ├── contact.html       # Contact page
+├── login.html         # Login page (UI only)
 ├── css/style.css      # Shared stylesheet
+├── css/login.css      # Login page styles
+├── js/login.js        # Login form validation
 ├── TESTING.md         # Shopping cart test plan and results
 ├── intro_ranjan.txt   # Introduction file
 ├── docs/              # Week 2 data analysis, Week 4 data dictionary
@@ -66,6 +70,8 @@ To run the tests, go into backend and run npm test (after npm install and npm ru
 There are 20 API tests in backend/tests/cart.test.js. They cover the health check, the product list, adding, updating and removing cart items, totals and GST, bad input (zero, negative or non-number quantities), missing carts, products and items, stock limits and the 20-item quantity cap.
 
 GitHub Actions (.github/workflows/backend-tests.yml) runs the tests automatically on every push and pull request to main.
+
+The Frontend check workflow (.github/workflows/frontend-check.yml) runs html-validate on every HTML page on each push and pull request to main, using the rules in .htmlvalidate.json. To run the same check yourself, run npx --yes html-validate@9 *.html in the project folder.
 
 Backend API
 
