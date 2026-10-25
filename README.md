@@ -59,6 +59,14 @@ Backend (Sprint 3), needs Node.js 18 or later:
     npm start           (http://localhost:3000)
     npm test
 
+Testing & CI
+
+To run the tests, go into backend and run npm test (after npm install and npm run init-db). The tests use their own temporary database, so buildmart.db is not changed.
+
+There are 20 API tests in backend/tests/cart.test.js. They cover the health check, the product list, adding, updating and removing cart items, totals and GST, bad input (zero, negative or non-number quantities), missing carts, products and items, stock limits and the 20-item quantity cap.
+
+GitHub Actions (.github/workflows/backend-tests.yml) runs the tests automatically on every push and pull request to main.
+
 Backend API
 
     GET    /                                health check
@@ -70,6 +78,7 @@ Backend API
 
 Prices are GST-inclusive, matching shop.html, so gst_included is total minus total / 1.1.
 Errors: 400 for bad input, 404 for a missing cart or product, 409 when quantity is more than stock.
+A quantity over 20 per item returns 400 (same limit as the front end).
 
 Database tables: products, carts, cart_items (see docs/week4/data-dictionary.md).
 
