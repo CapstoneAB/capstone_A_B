@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Buildmart</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/login.css">
+<script src="js/login.js" defer></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="bar">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#e08a1e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7l-7 7-3-3"/><path d="M3 21l9-9"/><path d="M14.5 3.5a3 3 0 0 1 4 4l-4-4z"/></svg>
+      Build<span>mart</span>
+    </div>
+    <nav class="site-nav">
+      <a href="index.html">Home</a>
+      <a href="shop.html">Shop</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+      <a href="login.html" class="active">Login</a>
+    </nav>
+    <a href="shop.html" class="cart-btn">
+      Cart
+      <span class="cart-count">0</span>
+    </a>
+  </div>
+</header>
+
+<main class="login-wrap">
+  <div class="login-card">
+    <h1 class="page-title">Log in to Buildmart</h1>
+    <p class="page-sub">Welcome back. Enter your details to continue.</p>
+
+    <form id="loginForm" class="login-form" novalidate>
+      <div class="form-group">
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email" autocomplete="email" placeholder="you@example.com" aria-describedby="emailError" required>
+        <p class="field-error" id="emailError"></p>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="password-row">
+          <input type="password" id="password" name="password" autocomplete="current-password" placeholder="At least 8 characters" aria-describedby="passwordError" required>
+          <button type="button" id="togglePassword" class="toggle-password" aria-controls="password" aria-pressed="false">Show password</button>
+        </div>
+        <p class="field-error" id="passwordError"></p>
+      </div>
+
+      <div class="form-options">
+        <label for="remember" class="remember">
+          <input type="checkbox" id="remember" name="remember">
+          Remember me
+        </label>
+        <a href="#" title="Coming in Version 2">Forgot password?</a>
+      </div>
+
+      <div id="formMessage" class="form-message" aria-live="polite"></div>
+
+      <button type="submit" class="btn btn-primary login-submit">Log in</button>
+    </form>
+
+    <p class="login-register">Don't have an account? <a href="#" title="Coming in Version 2">Register</a></p>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <h4>Buildmart</h4>
+      <p>Hardware &amp; home essentials for every project, big or small.</p>
+    </div>
+    <div>
+      <h4>Quick Links</h4>
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="shop.html">Shop</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <p>support@buildmart.com</p>
+      <p>Mon–Fri: 9am–5pm</p>
+    </div>
+  </div>
+  <div class="footer-bottom">&copy; 2026 Buildmart. Capstone project — Secure Retail System.</div>
+</footer>
+
+</body>
+</html>
