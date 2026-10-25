@@ -1,6 +1,8 @@
 const express = require('express');
 const Database = require('better-sqlite3');
 const path = require('path');
+// Same per-item limit as the front end (shop.html)
+const MAX_QUANTITY = 20;
 
 function createApp(databasePath = path.join(__dirname, 'buildmart.db')) {
   const app = express();
@@ -37,6 +39,8 @@ function createApp(databasePath = path.join(__dirname, 'buildmart.db')) {
     const product = db.prepare('SELECT * FROM products WHERE product_id = ?').get(product_id);
     if (!product) return res.status(404).json({error: 'Product not found'});
     const existing = db.prepare('SELECT quantity FROM cart_items WHERE cart_id = ? AND product_id = ?').get(req.params.id, product_id);
+    if ((existing?.quantity || 0) + quantity > MAX_QUANTITY)
+      return res.status(400).json({error: 'Maximum quantity per item is 20'});
     if ((existing?.quantity || 0) + quantity > product.stock)
       return res.status(409).json({error: 'Requested quantity exceeds available stock'});
     db.prepare(`INSERT INTO cart_items(cart_id, product_id, quantity) VALUES (?, ?, ?)
@@ -50,6 +54,7 @@ function createApp(databasePath = path.join(__dirname, 'buildmart.db')) {
       return res.status(400).json({error: 'Valid product ID and positive integer quantity required'});
     const item = db.prepare('SELECT 1 FROM cart_items WHERE cart_id = ? AND product_id = ?').get(req.params.id, req.params.productId);
     if (!item) return res.status(404).json({error: 'Cart item not found'});
+    if (quantity > MAX_QUANTITY) return res.status(400).json({error: 'Maximum quantity per item is 20'});
     const product = db.prepare('SELECT stock FROM products WHERE product_id = ?').get(req.params.productId);
     if (quantity > product.stock) return res.status(409).json({error: 'Requested quantity exceeds available stock'});
     db.prepare('UPDATE cart_items SET quantity = ? WHERE cart_id = ? AND product_id = ?').run(quantity, req.params.id, req.params.productId);
