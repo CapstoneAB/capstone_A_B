@@ -1,13 +1,33 @@
 const express = require('express');
 const Database = require('better-sqlite3');
 const path = require('path');
+const crypto = require('crypto');
+const {ensureAuthTables} = require('./auth/schema');
+const {createAuthRouter} = require('./auth/routes');
 // Same per-item limit as the front end (shop.html)
 const MAX_QUANTITY = 20;
+// The website pages live one folder up from backend/
+const SITE_ROOT = path.join(__dirname, '..');
+// Only plain page names like login.html, so nothing in a subfolder or a dotfile can match
+const PAGE_PATTERN = /^\/([A-Za-z0-9_-]+\.html)$/;
 
-function createApp(databasePath = path.join(__dirname, 'buildmart.db')) {
+// The secret that signs login tokens comes from the environment, never from the code
+function getJwtSecret(options) {
+  const secret = options.jwtSecret || process.env.JWT_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production') throw new Error('JWT_SECRET must be set when NODE_ENV is production');
+  console.warn('Warning: JWT_SECRET is not set, using a random secret (logins end when the server restarts)');
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function createApp(databasePath = path.join(__dirname, 'buildmart.db'), options = {}) {
+  // Checked before opening the database so a missing secret stops startup cleanly
+  const jwtSecret = getJwtSecret(options);
   const app = express();
   const db = new Database(databasePath);
   db.pragma('foreign_keys = ON');
+  // Adds the user tables to an existing buildmart.db without re-running init-db
+  ensureAuthTables(db);
   app.use(express.json());
 
   const validId = value => /^[1-9]\d*$/.test(String(value)) && Number.isSafeInteger(Number(value));
@@ -30,6 +50,7 @@ function createApp(databasePath = path.join(__dirname, 'buildmart.db')) {
   };
 
   app.get('/', (_req, res) => res.json({message: 'Buildmart backend running'}));
+  app.use('/auth', createAuthRouter(db, {...options, jwtSecret}));
   app.get('/api/products', (_req, res) => res.json(db.prepare('SELECT * FROM products ORDER BY product_id').all()));
   app.get('/api/carts/:id/items', checkCart, (req, res) => res.json(getCart(req.params.id)));
   app.post('/api/carts/:id/items', checkCart, (req, res) => {
@@ -66,11 +87,26 @@ function createApp(databasePath = path.join(__dirname, 'buildmart.db')) {
     if (!result.changes) return res.status(404).json({error: 'Cart item not found'});
     res.json(getCart(req.params.id));
   });
+  // Website pages, served from the same origin as the API so the forms need no CORS.
+  // Allow-list: root .html pages plus the css and js folders. Everything else in the
+  // repo (backend/, the database, .git, docs, dotfiles) is never served.
+  const staticOptions = {index: false, redirect: false, dotfiles: 'ignore'};
+  app.use('/css', express.static(path.join(SITE_ROOT, 'css'), staticOptions));
+  app.use('/js', express.static(path.join(SITE_ROOT, 'js'), staticOptions));
+  app.get(PAGE_PATTERN, (req, res, next) => {
+    res.sendFile(PAGE_PATTERN.exec(req.path)[1], {root: SITE_ROOT, dotfiles: 'deny'}, err => err && next());
+  });
   app.locals.closeDatabase = () => db.close();
   return app;
 }
 if (require.main === module) {
-  const app = createApp();
+  let app;
+  try {
+    app = createApp();
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
   const port = Number(process.env.PORT) || 3000;
   app.listen(port, () => console.log(`Buildmart backend running at http://localhost:${port}`));
 }
