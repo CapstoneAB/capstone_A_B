@@ -25,7 +25,9 @@ function hashPassword(plain) {
 }
 
 function verifyPassword(plain, hash) {
-  if (typeof plain !== 'string' || typeof hash !== 'string') return Promise.resolve(false);
+  // bcrypt ignores bytes after 72, so "password + anything" would match without this check
+  if (typeof plain !== 'string' || typeof hash !== 'string' || Buffer.byteLength(plain, 'utf8') > MAX_PASSWORD_BYTES)
+    return Promise.resolve(false);
   return bcrypt.compare(plain, hash);
 }
 

@@ -1,14 +1,36 @@
-const {test} = require('node:test');
+const {test, before, after} = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const {createApp} = require('../server');
 const {ensureAuthTables} = require('../auth/schema');
 const {checkPasswordStrength, hashPassword, verifyPassword} = require('../auth/passwords');
-// Made-up password used only by these tests
+// Made-up password and secret used only by these tests
 const SAMPLE = 'Sample#Pass1';
+const TEST_SECRET = 'test-secret';
+let app, server, base, dir, dbFile;
+before(async () => {
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'buildmart-auth-'));
+  dbFile = path.join(dir, 'test.db');
+  // createApp prepares the cart queries, so the cart tables have to exist (empty is fine)
+  const db = new Database(dbFile);
+  db.exec(`CREATE TABLE products(product_id INTEGER PRIMARY KEY,name TEXT,price REAL,stock INTEGER);
+    CREATE TABLE carts(cart_id INTEGER PRIMARY KEY,customer_name TEXT);
+    CREATE TABLE cart_items(cart_item_id INTEGER PRIMARY KEY,cart_id INTEGER REFERENCES carts(cart_id),product_id INTEGER REFERENCES products(product_id),quantity INTEGER,UNIQUE(cart_id,product_id));`);
+  db.close();
+  app = createApp(dbFile, {jwtSecret: TEST_SECRET});
+  server = await new Promise(resolve => {const s = app.listen(0, () => resolve(s));});
+  base = `http://127.0.0.1:${server.address().port}`;
+});
+after(async () => {await new Promise(resolve => server.close(resolve)); app.locals.closeDatabase(); fs.rmSync(dir, {recursive:true,force:true});});
+async function request(method, url, body) {
+  const response = await fetch(base + url, {method, headers: {'content-type':'application/json'}, ...(body ? {body:JSON.stringify(body)} : {})});
+  return {status:response.status, headers:response.headers, data:await response.json()};
+}
 
 test('hash is never equal to the password and uses bcrypt cost 12', async () => {
   const hash = await hashPassword(SAMPLE);
@@ -60,5 +82,105 @@ test('ensureAuthTables creates the auth tables and can run twice', () => {
   } finally {
     db.close();
     fs.rmSync(dir, {recursive: true, force: true});
+  }
+});
+test('verifyPassword rejects the right password with extra text after 72 bytes', async () => {
+  const long = 'Aa1!' + 'x'.repeat(68);
+  const hash = await hashPassword(long);
+  assert.equal(await verifyPassword(long, hash), true);
+  assert.equal(await verifyPassword(long + 'extra', hash), false);
+});
+
+// ---- Register and login (they share one database, so each test uses its own user) ----
+test('register creates a user and returns only public details', async () => {
+  const r = await request('POST','/auth/register',{username:'alex_b',email:'  Alex@Example.com ',password:SAMPLE});
+  assert.equal(r.status,201);
+  assert.deepEqual(Object.keys(r.data).sort(),['email','user_id','username']);
+  assert.equal(r.data.username,'alex_b'); assert.equal(r.data.email,'alex@example.com');
+  assert.ok(Number.isInteger(r.data.user_id));
+  assert.equal(r.headers.get('cache-control'),'no-store');
+});
+test('register rejects a username that is taken (any letter case)', async () => {
+  await request('POST','/auth/register',{username:'sam_t',email:'sam@example.com',password:SAMPLE});
+  const r = await request('POST','/auth/register',{username:'SAM_T',email:'sam2@example.com',password:SAMPLE});
+  assert.equal(r.status,409); assert.ok(r.data.fields.username); assert.equal(r.data.fields.email,undefined);
+});
+test('register rejects an email that is taken in a different letter case', async () => {
+  await request('POST','/auth/register',{username:'jo_k',email:'jo@example.com',password:SAMPLE});
+  const r = await request('POST','/auth/register',{username:'jo_k2',email:'JO@Example.COM',password:SAMPLE});
+  assert.equal(r.status,409); assert.ok(r.data.fields.email); assert.equal(r.data.fields.username,undefined);
+});
+test('register rejects a weak password and lists the missing rules', async () => {
+  const r = await request('POST','/auth/register',{username:'weak_user',email:'weak@example.com',password:'password'});
+  assert.equal(r.status,400);
+  assert.match(r.data.fields.password,/one uppercase letter/);
+  assert.match(r.data.fields.password,/one number/);
+  assert.match(r.data.fields.password,/one symbol/);
+  assert.equal(r.data.fields.email,undefined); assert.equal(r.data.fields.username,undefined);
+});
+test('register rejects a bad email', async () => {
+  for (const email of ['not-an-email','a@b','has space@example.com','',undefined]) {
+    const r = await request('POST','/auth/register',{username:'mail_user',email,password:SAMPLE});
+    assert.equal(r.status,400); assert.ok(r.data.fields.email,`expected email error for ${email}`);
+  }
+});
+test('register rejects a bad username', async () => {
+  for (const username of ['ab','a'.repeat(21),'has space','dash-name','',42]) {
+    const r = await request('POST','/auth/register',{username,email:'name@example.com',password:SAMPLE});
+    assert.equal(r.status,400); assert.ok(r.data.fields.username,`expected username error for ${username}`);
+  }
+});
+test('register with no body returns 400 with an error for every field', async () => {
+  const r = await request('POST','/auth/register');
+  assert.equal(r.status,400); assert.deepEqual(Object.keys(r.data.fields).sort(),['email','password','username']);
+});
+test('stored password is a bcrypt hash, not the password', async () => {
+  await request('POST','/auth/register',{username:'hash_check',email:'hash@example.com',password:SAMPLE});
+  const db = new Database(dbFile, {readonly:true});
+  const row = db.prepare('SELECT * FROM users WHERE username = ?').get('hash_check');
+  db.close();
+  assert.notEqual(row.password_hash,SAMPLE);
+  assert.match(row.password_hash,/^\$2[aby]\$12\$.{53}$/);
+  assert.equal(await verifyPassword(SAMPLE,row.password_hash),true);
+  assert.ok(!Object.values(row).includes(SAMPLE));
+});
+test('login returns a signed HS256 token that lasts 1 hour', async () => {
+  const reg = await request('POST','/auth/register',{username:'login_ok',email:'login@example.com',password:SAMPLE});
+  const r = await request('POST','/auth/login',{email:'LOGIN@example.com',password:SAMPLE});
+  assert.equal(r.status,200); assert.equal(r.data.expires_in,3600);
+  assert.deepEqual(r.data.user,{user_id:reg.data.user_id,username:'login_ok',email:'login@example.com'});
+  assert.equal(jwt.decode(r.data.token,{complete:true}).header.alg,'HS256');
+  const claims = jwt.verify(r.data.token,TEST_SECRET,{algorithms:['HS256']});
+  assert.equal(claims.sub,String(reg.data.user_id)); assert.equal(claims.username,'login_ok');
+  assert.equal(claims.exp - claims.iat,3600); assert.ok(claims.jti);
+  assert.equal(r.headers.get('cache-control'),'no-store');
+});
+test('each login gets a different token id (jti)', async () => {
+  await request('POST','/auth/register',{username:'two_logins',email:'two@example.com',password:SAMPLE});
+  const a = await request('POST','/auth/login',{email:'two@example.com',password:SAMPLE});
+  const b = await request('POST','/auth/login',{email:'two@example.com',password:SAMPLE});
+  assert.notEqual(jwt.decode(a.data.token).jti,jwt.decode(b.data.token).jti);
+});
+test('login with the wrong password returns 401', async () => {
+  await request('POST','/auth/register',{username:'wrong_pw',email:'wrong@example.com',password:SAMPLE});
+  const r = await request('POST','/auth/login',{email:'wrong@example.com',password:'Sample#Pass2'});
+  assert.equal(r.status,401); assert.equal(r.data.error,'Invalid email or password'); assert.equal(r.data.token,undefined);
+});
+test('login with an unknown email returns the same 401', async () => {
+  const r = await request('POST','/auth/login',{email:'nobody@example.com',password:SAMPLE});
+  assert.equal(r.status,401); assert.equal(r.data.error,'Invalid email or password'); assert.equal(r.data.token,undefined);
+});
+test('login with missing fields returns 400', async () => {
+  assert.equal((await request('POST','/auth/login',{email:'login@example.com'})).status,400);
+  assert.equal((await request('POST','/auth/login',{password:SAMPLE})).status,400);
+});
+test('createApp refuses to start in production without JWT_SECRET', () => {
+  const saved = {NODE_ENV:process.env.NODE_ENV, JWT_SECRET:process.env.JWT_SECRET};
+  process.env.NODE_ENV = 'production'; delete process.env.JWT_SECRET;
+  try {
+    assert.throws(() => createApp(path.join(dir,'never-opened.db')),/JWT_SECRET/);
+    assert.equal(fs.existsSync(path.join(dir,'never-opened.db')),false);
+  } finally {
+    for (const [key,value] of Object.entries(saved)) value === undefined ? delete process.env[key] : process.env[key] = value;
   }
 });
