@@ -6,6 +6,10 @@ const {ensureAuthTables} = require('./auth/schema');
 const {createAuthRouter} = require('./auth/routes');
 // Same per-item limit as the front end (shop.html)
 const MAX_QUANTITY = 20;
+// The website pages live one folder up from backend/
+const SITE_ROOT = path.join(__dirname, '..');
+// Only plain page names like login.html, so nothing in a subfolder or a dotfile can match
+const PAGE_PATTERN = /^\/([A-Za-z0-9_-]+\.html)$/;
 
 // The secret that signs login tokens comes from the environment, never from the code
 function getJwtSecret(options) {
@@ -82,6 +86,15 @@ function createApp(databasePath = path.join(__dirname, 'buildmart.db'), options 
     const result = db.prepare('DELETE FROM cart_items WHERE cart_id = ? AND product_id = ?').run(req.params.id, req.params.productId);
     if (!result.changes) return res.status(404).json({error: 'Cart item not found'});
     res.json(getCart(req.params.id));
+  });
+  // Website pages, served from the same origin as the API so the forms need no CORS.
+  // Allow-list: root .html pages plus the css and js folders. Everything else in the
+  // repo (backend/, the database, .git, docs, dotfiles) is never served.
+  const staticOptions = {index: false, redirect: false, dotfiles: 'ignore'};
+  app.use('/css', express.static(path.join(SITE_ROOT, 'css'), staticOptions));
+  app.use('/js', express.static(path.join(SITE_ROOT, 'js'), staticOptions));
+  app.get(PAGE_PATTERN, (req, res, next) => {
+    res.sendFile(PAGE_PATTERN.exec(req.path)[1], {root: SITE_ROOT, dotfiles: 'deny'}, err => err && next());
   });
   app.locals.closeDatabase = () => db.close();
   return app;
