@@ -89,3 +89,21 @@ test('multi-item cart calculates total and GST included', async () => {
   assert.equal(r.status,201); assert.equal(r.data.items.length,2);
   assert.equal(r.data.total,75.97); assert.equal(r.data.gst_included,6.91);
 });
+// Quantity cap tests use cart 3 and Paint Brush (stock 30) so stock limits can't interfere
+test('POST quantity over 20 returns 400', async () => {
+  const r = await request('POST','/api/carts/3/items',{product_id:3,quantity:25});
+  assert.equal(r.status,400); assert.equal(r.data.error,'Maximum quantity per item is 20');
+});
+test('POST that takes the total over 20 returns 400 and keeps the old quantity', async () => {
+  assert.equal((await request('POST','/api/carts/3/items',{product_id:3,quantity:18})).status,201);
+  assert.equal((await request('POST','/api/carts/3/items',{product_id:3,quantity:3})).status,400);
+  const r = await request('GET','/api/carts/3/items');
+  assert.equal(r.data.items[0].quantity,18);
+});
+test('PATCH quantity to 21 returns 400', async () => {
+  assert.equal((await request('PATCH','/api/carts/3/items/3',{quantity:21})).status,400);
+});
+test('PATCH quantity to exactly 20 returns 200', async () => {
+  const r = await request('PATCH','/api/carts/3/items/3',{quantity:20});
+  assert.equal(r.status,200); assert.equal(r.data.items[0].quantity,20);
+});
