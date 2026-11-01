@@ -2,7 +2,7 @@
 
 Run with the backend started (`cd backend`, `npm run reset-db`, `npm start`) and the shop open at http://localhost:3000/shop.html.
 
-Results below are from 1 November 2026. T01 to T16 and T19 to T25 were run in Microsoft Edge (headless) by a script that clicked the real pages and read `buildmart.db` after each step. Repeat them by hand before the live demo.
+Results below are from 1 November 2026. The page tests were run in a headless browser (Edge, then Chrome after the orders work) by a script that clicked the real pages and read `buildmart.db` after each step. T01 to T15 were run again after the orders work, because shop.html changed. Repeat the demo tests by hand before the live demo.
 "Check DB" means open `backend/buildmart.db` in DB Browser for SQLite and look at the `cart_items` table (press F5 to refresh).
 Screenshots of the main tests are in `docs/screenshots/`, named by test ID.
 
@@ -23,16 +23,39 @@ Screenshots of the main tests are in `docs/screenshots/`, named by test ID.
 | T13 | Error handling | Product does not exist (API) | POST product_id 999 | 404 "Product not found" | ✅ Pass |
 | T14 | Error handling | Cart does not exist (API) | GET /api/carts/999/items | 404 "Cart not found" | ✅ Pass |
 | T15 | Error handling | Backend not running | Lose the connection and click Add to cart, then open shop.html without the server | "Could not reach the server" message both times, no crash, cart unchanged | ✅ Pass |
-| T16 | Checkout | Checkout empties cart | Add items, click Checkout | "Demo checkout complete" message with the total, cart empty, `cart_items` has no rows for cart 1 (no order is recorded yet) | ✅ Pass |
-| T17 | Automated | Full test suite | `cd backend`, `npm test` | 77 tests, 77 pass, 0 fail | ✅ Pass |
+| T16 | Business rule | Guest checkout | As a guest, add items and click Checkout | "Please log in to place an order"; no row in `orders` | ✅ Pass |
+| T17 | Automated | Full test suite | `cd backend`, `npm test` | 100 tests, 100 pass, 0 fail | ✅ Pass |
 | T18 | Automated | GitHub Actions | Open the Actions tab on GitHub | Backend tests and Frontend check workflows are green | ✅ Pass (PR #53) |
 | T19 | Accounts | Register through the page | Fill in register.html and submit | Account created; `users` stores a bcrypt hash, not the password | ✅ Pass |
 | T20 | Validation | Wrong password | Log in with the wrong password | "Invalid email or password"; still logged out | ✅ Pass |
 | T21 | Accounts | Correct password | Log in with the right password | "You are logged in as ..." and the form is hidden | ✅ Pass |
 | T22 | Accounts | Refresh and log out | Refresh login.html, then click Log out | Still logged in after refresh; after log out the old token gets 401 | ✅ Pass |
 | T23 | Security | Nothing secret in URLs | Check every URL requested in T19 to T22 | The password and token never appear in a URL | ✅ Pass |
-| T24 | Layout | Phone width | Open shop.html at 375px wide | No sideways scrolling | ✅ Pass |
+| T24 | Layout | Phone width | Open every page at 360px and 390px wide | No sideways scrolling; the menu wraps onto two lines | ✅ Pass |
 | T25 | Quality | Browser errors | Watch for errors during all tests above | No uncaught JavaScript errors | ✅ Pass |
+
+## Product API, user carts and orders (issues #38, #39, #40, #44, #45)
+
+"Check DB" here means the `carts`, `orders`, `order_items` and `products` tables.
+
+| ID | Category | Test | Steps | Expected result | Result |
+|----|----------|------|-------|-----------------|--------|
+| T26 | Read | Category filter | Choose Tools in the Category list on shop.html | Only Claw Hammer, LED Work Light and Tape Measure show (GET /api/products/category/Tools) | ✅ Pass |
+| T27 | Read | One product (API) | GET /api/products/2, then /api/products/999 and /api/products/abc | 200 with the hammer; 404; 400 | ✅ Pass |
+| T28 | Read | Paging (API) | GET /api/products?page=3&limit=3, then ?limit=500 | Products 7 and 8 with X-Total-Count 8; 400 | ✅ Pass |
+| T29 | Create | User cart | Log in, open shop.html | "Logged in as ..."; a new row in `carts` with your `user_id` | ✅ Pass |
+| T30 | Create | Add to user cart | Add Paint twice and Bolt once | Rows are in your cart, not in guest cart 1; total $128.00, GST $11.64 | ✅ Pass |
+| T31 | Read | Cart kept between logins | Log out, log in again, open the shop | The same items are still in your cart | ✅ Pass |
+| T32 | Security | Someone else's cart | GET /api/carts/{your cart}/items with no token, then with another user's token | 401, then 403 | ✅ Pass |
+| T33 | Create | Checkout | Click Checkout | "Order #1 placed"; one row in `orders` (Placed, $128.00), two rows in `order_items`; Paint stock 15 → 13; your cart is empty | ✅ Pass |
+| T34 | Validation | Stock ran out before checkout | Put 3 Safety Glasses in a cart, set their stock to 1 in the DB, click Checkout | 409 "Only 1 left of Safety Glasses"; no order saved, stock and cart unchanged | ✅ Pass |
+| T35 | Validation | Empty cart checkout (API) | POST /api/orders with an empty cart | 400 "Your cart is empty" | ✅ Pass |
+| T36 | Read | Order history | Open My Orders | Order #1 with date, items, total and status; click it to see its two items | ✅ Pass |
+| T37 | Read | Filters and pages | Filter by status, date and min/max total; use page=2&limit=1 | Only matching orders show; bad values (status=Lost, from=01-11-2026, limit=100) return 400 | ✅ Pass |
+| T38 | Update | Cancel order | Click Cancel order on a Placed order | Status Cancelled; Paint stock goes back to 15; cancelling again returns 409 | ✅ Pass |
+| T39 | Security | Someone else's orders | Use another user's token on /api/orders/1 and /api/users/1/orders | 404 and 403; no token gives 401 | ✅ Pass |
+| T40 | Data | Old orders keep their prices | Change Paint's price in the DB, then open order #1 | The order still shows $58.00 and $128.00 | ✅ Pass |
+| T41 | Error handling | Orders page when logged out | Open orders.html without logging in | "Please log in to see your orders" with a Log in link | ✅ Pass |
 
 ## Issues found and fixed
 
@@ -44,6 +67,10 @@ Screenshots of the main tests are in `docs/screenshots/`, named by test ID.
 | Checkout said "Order placed!" although no order is saved | Reviewing the checkout flow against the database | The message now says it is a demo checkout, and the README lists orders as future work |
 | Quick clicks could send cart changes out of order | Reviewing the new fetch calls | shop.html sends cart changes one at a time; five quick clicks now save a quantity of 5 |
 | The login page never called the login API | Comparing login.js with the auth routes | login.js now logs in and out through /auth/login and /auth/logout |
+| Checkout still emptied the cart without saving an order (issues #40, #44, #45) | Comparing the open issues with the code | Added the `orders` and `order_items` tables, POST /api/orders, the order API and the My Orders page. Checkout now needs a login |
+| Every customer shared cart 1 (issue #39) | Comparing the open issues with the code | `carts.user_id` links a cart to an account; GET /api/my-cart gives each user their own cart, and other users get 403 |
+| The product API had no single-product, category or paging routes (issue #38) | Comparing the open issues with the code | Added GET /api/products/:id, /api/products/category/:category, /api/categories, and page/limit |
+| Adding the My Orders link made every page scroll sideways on a phone (411px on a 390px screen) | Phone width test (T24) | The menu now wraps onto a second line on small screens, and links don't break in the middle |
 | Test case 12 in the table below expected Remove to lower the quantity by 1, but Remove takes the whole item out | Comparing the test plan with the code | Corrected the test case. The − button lowers the quantity by 1 |
 
 ---
