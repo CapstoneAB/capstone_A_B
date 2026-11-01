@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "init-db": "node init-db.js",
+    "reset-db": "node init-db.js --reset",
     "test": "node --test"
   },
   "dependencies": {
