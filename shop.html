@@ -281,120 +281,152 @@
 </footer>
 
 <script>
+  // ---- Connection to the backend ----
+  // The page and the API come from the same server (npm start in backend/)
+  const CART_ID = 1;
+  const CART_URL = `/api/carts/${CART_ID}/items`;
+  const SERVER_HELP = "Could not reach the server. Start the backend (npm start in backend/) and open this page from http://localhost:3000/shop.html.";
+
+  async function api(url, options = {}) {
+    const response = await fetch(url, {headers: {"Content-Type": "application/json"}, ...options});
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Something went wrong. Please try again.");
+    return data;
+  }
+
+  // Sends cart changes one at a time so quick clicks reach the database in order
+  let queue = Promise.resolve();
+  function updateCart(request, onSuccess) {
+    queue = queue.then(async () => {
+      try {
+        cart = await request();
+        renderCart();
+        if (onSuccess) onSuccess();
+      } catch (err) {
+        showToast(err instanceof TypeError ? SERVER_HELP : err.message);
+      }
+    });
+    return queue;
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   // ---- Product catalogue ----
-  const products = [
-    { id: 1, name: "Bolt", price: 12.00, unit: "each", emoji: "🔩" },
-    { id: 2, name: "Claw Hammer 450g", meta: "Fibreglass handle", price: 24.95, unit: "each", emoji: "🔨" },
-    { id: 3, name: "Interior Paint 4L", meta: "Low-sheen, white", price: 58.00, unit: "tin", emoji: "🪣" },
-    { id: 4, name: "Pine Timber 2.4m", meta: "90 x 45mm treated", price: 12.40, unit: "length", emoji: "🪵" },
-    { id: 5, name: "LED Work Light", meta: "2000 lumen, rechargeable", price: 79.50, unit: "each", emoji: "💡" },
-    { id: 6, name: "Tape Measure 8m", meta: "Magnetic hook", price: 18.90, unit: "each", emoji: "📏" },
-    { id: 7, name: "Garden Hose 30m", meta: "Kink-resistant", price: 44.00, unit: "each", emoji: "🌿" },
-    { id: 8, name: "Safety Glasses", meta: "Anti-fog, clear", price: 9.95, unit: "pair", emoji: "🥽" },
-  ];
+  // Product details come from the database. Only the icon for each product_id lives here.
+  const icons = { 1: "🔩", 2: "🔨", 3: "🪣", 4: "🪵", 5: "💡", 6: "📏", 7: "🌿", 8: "🥽" };
+  const iconFor = id => icons[id] || "📦";
+  let products = [];
 
   // ---- Render product grid ----
   function renderGrid() {
-    document.getElementById("grid").innerHTML = products.map(p => `
+    document.getElementById("grid").innerHTML = products.map(p => {
+      return `
       <div class="product">
-        <div class="thumb">${p.emoji}</div>
+        <div class="thumb">${iconFor(p.product_id)}</div>
         <div class="product-body">
-          <div class="product-name">${p.name}</div>
-          <div class="product-meta">${p.meta || ""}</div>
+          <div class="product-name">${escapeHtml(p.name)}</div>
+          <div class="product-meta">${escapeHtml(p.description || "")}</div>
+          <div class="product-meta">${p.stock > 0 ? `${p.stock} in stock` : "Out of stock"}</div>
           <div class="price-row">
             <span class="price">$${p.price.toFixed(2)}</span>
-            <span class="price-unit">/ ${p.unit}</span>
+            <span class="price-unit">/ ${escapeHtml(p.unit)}</span>
           </div>
-          <button class="add-btn" onclick="addToCart(${p.id})">Add to cart</button>
+          <button class="add-btn" onclick="addToCart(${p.product_id})"${p.stock > 0 ? "" : " disabled"}>Add to cart</button>
         </div>
       </div>
-    `).join("");
+    `;
+    }).join("");
   }
 
   // ---- Cart state ----
-  // cart = { productId: quantity }
-  let cart = {};
+  // cart is the backend's response: { items: [...], gst_included, total }
+  let cart = { items: [], gst_included: 0, total: 0 };
 
   function addToCart(id) {
-    cart[id] = (cart[id] || 0) + 1;
-    renderCart();
-    const p = products.find(x => x.id === id);
-    showToast(`${p.name} added to cart ✅`);
+    const p = products.find(x => x.product_id === id);
+    return updateCart(
+      () => api(CART_URL, { method: "POST", body: JSON.stringify({ product_id: id, quantity: 1 }) }),
+      () => showToast(`${p.name} added to cart ✅`)
+    );
   }
 
   function changeQty(id, delta) {
-    cart[id] = (cart[id] || 0) + delta;
-    if (cart[id] <= 0) delete cart[id];
-    if (cart[id] > 20) cart[id] = 20;
-    renderCart();
+    return updateCart(() => {
+      const item = cart.items.find(x => x.product_id === id);
+      if (!item) return Promise.resolve(cart);
+      const quantity = item.quantity + delta;
+      if (quantity <= 0) return api(`${CART_URL}/${id}`, { method: "DELETE" });
+      return api(`${CART_URL}/${id}`, { method: "PATCH", body: JSON.stringify({ quantity }) });
+    });
   }
 
   function removeItem(id) {
-    delete cart[id];
-    renderCart();
+    return updateCart(() => api(`${CART_URL}/${id}`, { method: "DELETE" }));
   }
 
   // ---- Render cart ----
   function renderCart() {
-    const ids = Object.keys(cart);
     const itemsEl = document.getElementById("cartItems");
-    const totalQty = ids.reduce((s, id) => s + cart[id], 0);
+    const totalQty = cart.items.reduce((s, item) => s + item.quantity, 0);
     document.getElementById("cartCount").textContent = totalQty;
     const headerCount = document.getElementById("cartHeaderCount");
     if (headerCount) {
       headerCount.textContent = totalQty > 0 ? `(${totalQty} item${totalQty !== 1 ? 's' : ''})` : '';
     }
 
-    if (ids.length === 0) {
+    if (cart.items.length === 0) {
       itemsEl.innerHTML = `
         <div class="empty">
           <span class="empty-emoji">🛒</span>
           Your cart is empty.<br>Add some gear to get started 🧰
         </div>`;
     } else {
-      itemsEl.innerHTML = ids.map(id => {
-        const p = products.find(x => x.id == id);
-        const qty = cart[id];
-        const lineTotal = (p.price * qty).toFixed(2);
+      itemsEl.innerHTML = cart.items.map(item => {
+        const p = products.find(x => x.product_id === item.product_id);
         return `
           <div class="cart-item">
-            <div class="ci-thumb">${p.emoji}</div>
+            <div class="ci-thumb">${iconFor(item.product_id)}</div>
             <div class="ci-info">
-              <div class="ci-name">${p.name}</div>
-              <div class="ci-price">$${p.price.toFixed(2)} / ${p.unit}</div>
+              <div class="ci-name">${escapeHtml(item.name)}</div>
+              <div class="ci-price">$${item.price.toFixed(2)} / ${escapeHtml(p ? p.unit : "each")}</div>
               <div class="ci-controls">
                 <div class="qty">
-                  <button onclick="changeQty(${p.id}, -1)" aria-label="Decrease">−</button>
-                  <span>${qty}</span>
-                  <button onclick="changeQty(${p.id}, 1)" aria-label="Increase">+</button>
+                  <button onclick="changeQty(${item.product_id}, -1)" aria-label="Decrease">−</button>
+                  <span>${item.quantity}</span>
+                  <button onclick="changeQty(${item.product_id}, 1)" aria-label="Increase">+</button>
                 </div>
-                <span class="ci-line-total">$${lineTotal}</span>
-                <button class="remove" onclick="removeItem(${p.id})">Remove</button>
+                <span class="ci-line-total">$${item.subtotal.toFixed(2)}</span>
+                <button class="remove" onclick="removeItem(${item.product_id})">Remove</button>
               </div>
             </div>
           </div>`;
       }).join("");
     }
-    document.getElementById("checkoutBtn").disabled = ids.length === 0;
+    document.getElementById("checkoutBtn").disabled = cart.items.length === 0;
 
-    // Totals (prices are GST-inclusive, so back out the GST component)
-    const subtotal = ids.reduce((s, id) => {
-      const p = products.find(x => x.id == id);
-      return s + p.price * cart[id];
-    }, 0);
-    const gst = Math.round((subtotal - subtotal / 1.1) * 100) / 100;
-
-    document.getElementById("subtotal").textContent = "$" + subtotal.toFixed(2);
-    document.getElementById("gst").textContent = "$" + gst.toFixed(2);
-    document.getElementById("total").textContent = "$" + subtotal.toFixed(2);
+    // Totals come from the backend (prices are GST-inclusive)
+    document.getElementById("subtotal").textContent = "$" + cart.total.toFixed(2);
+    document.getElementById("gst").textContent = "$" + cart.gst_included.toFixed(2);
+    document.getElementById("total").textContent = "$" + cart.total.toFixed(2);
   }
 
+  // Orders are not built yet, so checkout empties the saved cart and does not record an order
   function checkout() {
     const total = document.getElementById("total").textContent;
-    showToast(`Order placed! Total: ${total} 🎉`);
-    cart = {};
-    renderCart();
-    setTimeout(closeCart, 800);
+    return updateCart(async () => {
+      let result = cart;
+      for (const item of cart.items) {
+        result = await api(`${CART_URL}/${item.product_id}`, { method: "DELETE" });
+      }
+      return result;
+    }, () => {
+      showToast(`Demo checkout complete. Total: ${total}. Your cart is now empty.`);
+      setTimeout(closeCart, 800);
+    });
   }
 
   // ---- Drawer ----
@@ -413,12 +445,26 @@
     t.textContent = msg;
     t.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
+    // Longer messages stay up long enough to read
+    toastTimer = setTimeout(() => t.classList.remove("show"), msg.length > 60 ? 6000 : 1800);
   }
 
   // ---- Init ----
-  renderGrid();
-  renderCart();
+  async function loadShop() {
+    renderCart();
+    try {
+      [products, cart] = await Promise.all([api("/api/products"), api(CART_URL)]);
+      renderGrid();
+      renderCart();
+    } catch {
+      const message = document.createElement("p");
+      message.className = "page-sub";
+      message.setAttribute("role", "alert");
+      message.textContent = SERVER_HELP;
+      document.getElementById("grid").replaceChildren(message);
+    }
+  }
+  loadShop();
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeCart(); });
 </script>
 </body>
