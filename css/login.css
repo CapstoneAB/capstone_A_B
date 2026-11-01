@@ -152,6 +152,7 @@
 
 /* ---------- Submit + register link ---------- */
 .login-submit { width: 100%; font-size: 1rem; }
+#logoutButton { display: block; margin: 12px auto 0; }
 
 .login-register {
   text-align: center;

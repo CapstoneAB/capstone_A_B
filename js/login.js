@@ -1,6 +1,6 @@
-// Buildmart — Login form (UI only)
-// Checks the fields in the browser. Nothing is stored or sent anywhere;
-// real sign-in will be connected to the backend in Version 2.
+// Buildmart — Login form
+// Checks the fields in the browser, then logs in through POST /auth/login.
+// The login token is kept in sessionStorage, so it ends when the tab closes.
 
 (function () {
   const form = document.getElementById("loginForm");
@@ -8,6 +8,12 @@
   const password = document.getElementById("password");
   const toggle = document.getElementById("togglePassword");
   const message = document.getElementById("formMessage");
+  const submit = form.querySelector('button[type="submit"]');
+  const session = document.getElementById("loginSession");
+  const sessionText = document.getElementById("sessionText");
+  const logoutButton = document.getElementById("logoutButton");
+  const TOKEN_KEY = "buildmartToken";
+  const SERVER_HELP = "Could not reach the server. Start the backend (npm start in backend/) and open this page from http://localhost:3000/login.html.";
 
   const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const MIN_PASSWORD_LENGTH = 8;
@@ -64,9 +70,57 @@
     toggle.setAttribute("aria-pressed", String(!showing));
   });
 
+  // ---- Logged-in state ----
+  function readToken() {
+    try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; }
+  }
+  function saveToken(token) {
+    try {
+      if (token) sessionStorage.setItem(TOKEN_KEY, token);
+      else sessionStorage.removeItem(TOKEN_KEY);
+    } catch { /* Storage is blocked: the login still works until the page is reloaded */ }
+  }
+  function showLoggedIn(user) {
+    sessionText.textContent = `You are logged in as ${user.username}.`;
+    session.hidden = false;
+    form.hidden = true;
+  }
+  function showLoggedOut() {
+    session.hidden = true;
+    form.hidden = false;
+  }
+
+  // Keep the user logged in across pages while the token is still valid
+  async function restoreLogin() {
+    const token = readToken();
+    if (!token) return;
+    try {
+      const response = await fetch("/auth/verify", {headers: {Authorization: `Bearer ${token}`}});
+      if (response.ok) {
+        const data = await response.json();
+        showLoggedIn(data.user);
+      } else {
+        saveToken(null);
+      }
+    } catch { /* Server is stopped: leave the form showing */ }
+  }
+
+  logoutButton.addEventListener("click", async () => {
+    const token = readToken();
+    // Remove the token here even if the server can't be reached
+    saveToken(null);
+    showLoggedOut();
+    password.value = "";
+    try {
+      await fetch("/auth/logout", {method: "POST", headers: {Authorization: `Bearer ${token}`}});
+      showMessage("You have been logged out.", "success");
+    } catch {
+      showMessage(SERVER_HELP, "error");
+    }
+  });
+
   // ---- Submit ----
-  form.addEventListener("submit", (event) => {
-    // Never do a real submit in Version 1
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     const emailError = checkEmail();
@@ -80,6 +134,28 @@
       return;
     }
 
-    showMessage("Login form is valid. Sign-in will be connected to the backend in Version 2.", "success");
+    submit.disabled = true;
+    showMessage("", "");
+    try {
+      const response = await fetch("/auth/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({email: email.value.trim(), password: password.value})
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        saveToken(data.token);
+        password.value = "";
+        showLoggedIn(data.user);
+      } else {
+        showMessage(data.error || "Could not log in. Please try again.", "error");
+      }
+    } catch {
+      showMessage(SERVER_HELP, "error");
+    } finally {
+      submit.disabled = false;
+    }
   });
+
+  restoreLogin();
 })();
