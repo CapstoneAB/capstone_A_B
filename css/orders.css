@@ -1,0 +1,78 @@
+/* Buildmart — My Orders page */
+
+.orders-message:empty { display: none; }
+.orders-message {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #e3ded3;
+  margin-bottom: 18px;
+}
+.orders-message a { font-weight: 600; text-decoration: underline; }
+
+.order-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: flex-end;
+  margin-bottom: 18px;
+}
+.order-filters label { display: flex; flex-direction: column; font-size: .82rem; color: var(--muted); gap: 4px; }
+.order-filters input,
+.order-filters select {
+  font: inherit;
+  color: var(--ink);
+  padding: 6px 8px;
+  border: 1px solid #d8d3c8;
+  border-radius: 6px;
+  background: #fff;
+  width: 9.5rem;
+}
+.order-filters .btn { padding: 8px 18px; }
+
+.plain-btn {
+  font: inherit;
+  background: #fff;
+  border: 1px solid #d8d3c8;
+  border-radius: 6px;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+.plain-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.order {
+  background: #fff;
+  border: 1px solid #e3ded3;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.order summary {
+  display: grid;
+  grid-template-columns: 1.1fr 1.4fr 1fr 1fr 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+.order summary .label { display: block; font-size: .75rem; color: var(--muted); }
+.order-body { padding: 0 16px 16px; }
+.order-body table { width: 100%; border-collapse: collapse; font-size: .9rem; margin-bottom: 12px; }
+.order-body th,
+.order-body td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #eee9df; }
+.order-body td.num,
+.order-body th.num { text-align: right; }
+.order-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.status { font-weight: 700; }
+.status-Placed { color: #a15c00; }
+.status-Delivered, .status-Shipped { color: #1f6b52; }
+.status-Cancelled { color: #9a3030; }
+
+.pager { display: flex; align-items: center; gap: 14px; margin-top: 8px; }
+.pager span { font-size: .9rem; color: var(--muted); }
+
+@media (max-width: 640px) {
+  .order summary { grid-template-columns: 1fr 1fr; }
+  .order-filters input, .order-filters select { width: 100%; }
+  .order-filters label { flex: 1 1 45%; }
+}

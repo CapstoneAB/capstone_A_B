@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Orders — Buildmart</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/orders.css">
+<script src="js/orders.js" defer></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="bar">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#e08a1e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7l-7 7-3-3"/><path d="M3 21l9-9"/><path d="M14.5 3.5a3 3 0 0 1 4 4l-4-4z"/></svg>
+      Build<span>mart</span>
+    </div>
+    <nav class="site-nav">
+      <a href="index.html">Home</a>
+      <a href="shop.html">Shop</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+      <a href="orders.html" class="active">My Orders</a>
+      <a href="login.html">Login</a>
+    </nav>
+    <a href="shop.html" class="cart-btn">
+      Cart
+      <span class="cart-count">0</span>
+    </a>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1 class="page-title">My Orders</h1>
+  <p class="page-sub">Your past orders, newest first. Prices include GST.</p>
+
+  <p id="ordersMessage" class="orders-message" role="status"></p>
+
+  <section id="ordersArea" hidden>
+    <form id="orderFilters" class="order-filters">
+      <label for="statusFilter">Status
+        <select id="statusFilter">
+          <option value="">All</option>
+          <option>Placed</option>
+          <option>Processing</option>
+          <option>Shipped</option>
+          <option>Delivered</option>
+          <option>Cancelled</option>
+        </select>
+      </label>
+      <label for="fromFilter">From <input type="date" id="fromFilter"></label>
+      <label for="toFilter">To <input type="date" id="toFilter"></label>
+      <label for="minFilter">Min total ($) <input type="number" id="minFilter" min="0" step="0.01"></label>
+      <label for="maxFilter">Max total ($) <input type="number" id="maxFilter" min="0" step="0.01"></label>
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <button type="reset" class="plain-btn">Clear</button>
+    </form>
+
+    <div id="ordersList"></div>
+
+    <div class="pager">
+      <button type="button" class="plain-btn" id="prevPage">Previous</button>
+      <span id="pageInfo"></span>
+      <button type="button" class="plain-btn" id="nextPage">Next</button>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <h4>Buildmart</h4>
+      <p>Hardware &amp; home essentials for every project, big or small.</p>
+    </div>
+    <div>
+      <h4>Quick Links</h4>
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="shop.html">Shop</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <p>support@buildmart.com</p>
+      <p>Mon–Fri: 9am–5pm</p>
+    </div>
+  </div>
+  <div class="footer-bottom">&copy; 2026 Buildmart. Capstone project — Secure Retail System.</div>
+</footer>
+
+</body>
+</html>
