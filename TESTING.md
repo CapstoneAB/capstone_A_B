@@ -25,7 +25,7 @@ Screenshots of the main tests are in `docs/screenshots/`, named by test ID.
 | T15 | Error handling | Backend not running | Lose the connection and click Add to cart, then open shop.html without the server | "Could not reach the server" message both times, no crash, cart unchanged | ✅ Pass |
 | T16 | Checkout | Checkout empties cart | Add items, click Checkout | "Demo checkout complete" message with the total, cart empty, `cart_items` has no rows for cart 1 (no order is recorded yet) | ✅ Pass |
 | T17 | Automated | Full test suite | `cd backend`, `npm test` | 77 tests, 77 pass, 0 fail | ✅ Pass |
-| T18 | Automated | GitHub Actions | Open the Actions tab on GitHub | Backend tests and Frontend check workflows are green | Run after pushing |
+| T18 | Automated | GitHub Actions | Open the Actions tab on GitHub | Backend tests and Frontend check workflows are green | ✅ Pass (PR #53) |
 | T19 | Accounts | Register through the page | Fill in register.html and submit | Account created; `users` stores a bcrypt hash, not the password | ✅ Pass |
 | T20 | Validation | Wrong password | Log in with the wrong password | "Invalid email or password"; still logged out | ✅ Pass |
 | T21 | Accounts | Correct password | Log in with the right password | "You are logged in as ..." and the form is hidden | ✅ Pass |
