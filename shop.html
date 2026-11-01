@@ -55,6 +55,12 @@
   .price { font-size: 1.25rem; font-weight: 800; }
   .price-unit { font-size: .78rem; color: var(--muted); }
 
+  .shop-bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; margin: 0 0 18px; }
+  .shop-bar label { font-size: .9rem; color: var(--muted); }
+  .shop-bar select { font: inherit; padding: 6px 10px; border: 1px solid #d8d3c8; border-radius: 6px; background: #fff; margin-left: 6px; }
+  .account-note { font-size: .9rem; color: var(--muted); margin: 0; }
+  .account-note a { color: inherit; font-weight: 600; }
+
   .add-btn {
     border: 0;
     background: var(--amber);
@@ -218,6 +224,7 @@
       <a href="shop.html" class="active">Shop</a>
       <a href="about.html">About</a>
       <a href="contact.html">Contact</a>
+      <a href="orders.html">My Orders</a>
       <a href="login.html">Login</a>
     </nav>
     <div class="search">
@@ -234,6 +241,14 @@
 <main class="wrap">
   <h1 class="page-title">Power Tools &amp; Hardware</h1>
   <p class="page-sub">Free in-store pickup. Prices include GST.</p>
+  <div class="shop-bar">
+    <label for="categoryFilter">Category
+      <select id="categoryFilter" onchange="filterProducts()">
+        <option value="">All products</option>
+      </select>
+    </label>
+    <p class="account-note" id="accountNote">Shopping as a guest. <a href="login.html">Log in</a> to save your cart and place orders.</p>
+  </div>
   <div class="grid" id="grid"></div>
 </main>
 
@@ -283,14 +298,29 @@
 <script>
   // ---- Connection to the backend ----
   // The page and the API come from the same server (npm start in backend/)
-  const CART_ID = 1;
-  const CART_URL = `/api/carts/${CART_ID}/items`;
   const SERVER_HELP = "Could not reach the server. Start the backend (npm start in backend/) and open this page from http://localhost:3000/shop.html.";
+  // Guests share cart 1. After logging in (login.html), the user's own cart is used instead.
+  const GUEST_CART_ID = 1;
+  const TOKEN_KEY = "buildmartToken";
+  let cartId = GUEST_CART_ID;
+  let user = null;
+  const cartUrl = () => `/api/carts/${cartId}/items`;
+
+  function readToken() {
+    try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; }
+  }
 
   async function api(url, options = {}) {
-    const response = await fetch(url, {headers: {"Content-Type": "application/json"}, ...options});
+    const headers = {"Content-Type": "application/json"};
+    const token = readToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch(url, {...options, headers});
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || "Something went wrong. Please try again.");
+    if (!response.ok) {
+      const error = new Error(data.error || "Something went wrong. Please try again.");
+      error.status = response.status;
+      throw error;
+    }
     return data;
   }
 
@@ -319,11 +349,16 @@
   // Product details come from the database. Only the icon for each product_id lives here.
   const icons = { 1: "🔩", 2: "🔨", 3: "🪣", 4: "🪵", 5: "💡", 6: "📏", 7: "🌿", 8: "🥽" };
   const iconFor = id => icons[id] || "📦";
-  let products = [];
+  let products = [];     // every product (used for units in the cart)
+  let shownProducts = []; // the products in the grid (all, or one category)
 
   // ---- Render product grid ----
   function renderGrid() {
-    document.getElementById("grid").innerHTML = products.map(p => {
+    if (shownProducts.length === 0) {
+      document.getElementById("grid").innerHTML = '<p class="page-sub">No products in this category.</p>';
+      return;
+    }
+    document.getElementById("grid").innerHTML = shownProducts.map(p => {
       return `
       <div class="product">
         <div class="thumb">${iconFor(p.product_id)}</div>
@@ -349,7 +384,7 @@
   function addToCart(id) {
     const p = products.find(x => x.product_id === id);
     return updateCart(
-      () => api(CART_URL, { method: "POST", body: JSON.stringify({ product_id: id, quantity: 1 }) }),
+      () => api(cartUrl(), { method: "POST", body: JSON.stringify({ product_id: id, quantity: 1 }) }),
       () => showToast(`${p.name} added to cart ✅`)
     );
   }
@@ -359,13 +394,13 @@
       const item = cart.items.find(x => x.product_id === id);
       if (!item) return Promise.resolve(cart);
       const quantity = item.quantity + delta;
-      if (quantity <= 0) return api(`${CART_URL}/${id}`, { method: "DELETE" });
-      return api(`${CART_URL}/${id}`, { method: "PATCH", body: JSON.stringify({ quantity }) });
+      if (quantity <= 0) return api(`${cartUrl()}/${id}`, { method: "DELETE" });
+      return api(`${cartUrl()}/${id}`, { method: "PATCH", body: JSON.stringify({ quantity }) });
     });
   }
 
   function removeItem(id) {
-    return updateCart(() => api(`${CART_URL}/${id}`, { method: "DELETE" }));
+    return updateCart(() => api(`${cartUrl()}/${id}`, { method: "DELETE" }));
   }
 
   // ---- Render cart ----
@@ -414,19 +449,27 @@
     document.getElementById("total").textContent = "$" + cart.total.toFixed(2);
   }
 
-  // Orders are not built yet, so checkout empties the saved cart and does not record an order
-  function checkout() {
-    const total = document.getElementById("total").textContent;
-    return updateCart(async () => {
-      let result = cart;
-      for (const item of cart.items) {
-        result = await api(`${CART_URL}/${item.product_id}`, { method: "DELETE" });
-      }
-      return result;
-    }, () => {
-      showToast(`Demo checkout complete. Total: ${total}. Your cart is now empty.`);
-      setTimeout(closeCart, 800);
-    });
+  // ---- Checkout: POST /api/orders turns the logged-in user's cart into an order ----
+  // The server checks stock again, saves the order, takes the stock and empties the cart.
+  async function checkout() {
+    if (!user) {
+      showToast("Please log in to place an order. Your guest cart is not an account.");
+      return;
+    }
+    const button = document.getElementById("checkoutBtn");
+    button.disabled = true;
+    await queue; // let any cart changes still on their way finish first
+    try {
+      const order = await api("/api/orders", { method: "POST" });
+      cart = { cart_id: cartId, items: [], gst_included: 0, total: 0 };
+      renderCart();
+      closeCart();
+      showToast(`Order #${order.order_id} placed. Total $${order.total.toFixed(2)}. See it in My Orders.`);
+      await loadProducts(); // stock levels have changed
+    } catch (err) {
+      showToast(err instanceof TypeError ? SERVER_HELP : err.message);
+      renderCart();
+    }
   }
 
   // ---- Drawer ----
@@ -449,12 +492,63 @@
     toastTimer = setTimeout(() => t.classList.remove("show"), msg.length > 60 ? 6000 : 1800);
   }
 
+  // ---- READ: products, categories and the cart ----
+  async function loadProducts() {
+    const category = document.getElementById("categoryFilter").value;
+    products = await api("/api/products");
+    shownProducts = category ? await api(`/api/products/category/${encodeURIComponent(category)}`) : products;
+    renderGrid();
+  }
+
+  async function filterProducts() {
+    try {
+      await loadProducts();
+    } catch (err) {
+      showToast(err instanceof TypeError ? SERVER_HELP : err.message);
+    }
+  }
+
+  async function loadCategories() {
+    const select = document.getElementById("categoryFilter");
+    for (const c of await api("/api/categories")) {
+      const option = document.createElement("option");
+      option.value = c.category;
+      option.textContent = `${c.category} (${c.product_count})`;
+      select.appendChild(option);
+    }
+  }
+
+  // Logged in: use the user's own cart. Token missing or expired: use the guest cart.
+  async function loadCart() {
+    if (readToken()) {
+      try {
+        const verified = await api("/auth/verify");
+        user = verified.user;
+        const myCart = await api("/api/my-cart");
+        cartId = myCart.cart_id;
+        const note = document.getElementById("accountNote");
+        note.textContent = `Logged in as ${user.username}. Your cart is saved to your account. `;
+        const link = document.createElement("a");
+        link.href = "orders.html";
+        link.textContent = "My orders";
+        note.appendChild(link);
+        return myCart;
+      } catch (err) {
+        if (err.status !== 401) throw err;
+        try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* storage blocked */ }
+        user = null;
+      }
+    }
+    cartId = GUEST_CART_ID;
+    return api(cartUrl());
+  }
+
   // ---- Init ----
   async function loadShop() {
     renderCart();
     try {
-      [products, cart] = await Promise.all([api("/api/products"), api(CART_URL)]);
-      renderGrid();
+      await Promise.all([loadProducts(), loadCategories()]);
+      cart = await loadCart();
       renderCart();
     } catch {
       const message = document.createElement("p");
