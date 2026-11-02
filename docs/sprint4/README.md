@@ -13,7 +13,7 @@ Submission evidence for Capstone B Sprint 4. **Group 2** · Group Leader: **Ranj
 | [`demo-runbook.md`](demo-runbook.md) | Step-by-step live demonstration script and the outstanding screenshot shot list |
 | [`team-contributions.md`](team-contributions.md) | Per-member responsibilities, work delivered, evidence and presentation sections |
 | [`../../TESTING.md`](../../TESTING.md) | The 25 manual integration tests, cart tests, account tests and the bugs resolved |
-| [`../screenshots/`](../screenshots/) | Test screenshots, named by test ID |
+| [`../screenshots/`](../screenshots/) | 19 test screenshots, named by test ID — each CRUD shot pairs the live page with the `cart_items` table |
 
 ## Submission checklist
 
@@ -22,7 +22,7 @@ Submission evidence for Capstone B Sprint 4. **Group 2** · Group Leader: **Ranj
 - [x] **Working application** — `cd backend && npm install && npm run reset-db && npm start`
 - [x] **Testing evidence** — 77 automated tests passing, 25 manual integration tests
 - [x] **Team contribution record** — `team-contributions.md`
-- [ ] **CRUD screenshots** — shot list in `demo-runbook.md`, still to capture
+- [x] **CRUD screenshots** — captured from the running system, indexed in `crud-evidence.md`
 - [ ] **Presentation sections confirmed by the team** — currently a proposal in `team-contributions.md`
 
 ## Running the system

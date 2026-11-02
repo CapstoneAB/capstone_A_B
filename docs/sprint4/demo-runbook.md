@@ -56,37 +56,13 @@ While doing step 4, say this — it is the highest-value sentence in the demo:
 
 ---
 
-# Screenshot shot list — still outstanding
+# Screenshot evidence
 
-`docs/screenshots/` currently holds 11 images: T01, T02, T09, T10, T11, T15 (×2), T19,
-T20, T21, T24. **The Create, Update and Delete tests have no screenshots**, and CRUD
-demonstration plus testing evidence are worth 9 marks between them.
+`docs/screenshots/` now holds 19 images. The CRUD, API-testing, validation and database
+screenshots were captured from the running system and are indexed in
+[`crud-evidence.md`](crud-evidence.md).
 
-Capture each shot with **the browser and the `cart_items` table both visible**, and save it
-to `docs/screenshots/` under the filename given.
-
-These shots close all four outstanding boxes on the workbook's evidence checklist:
-
-| Workbook checklist item | Shots that satisfy it |
-| --- | --- |
-| CRUD screenshots collected | T03, T04, T05, T06, T07, T08 |
-| API testing screenshots collected | T12, T13, T14, T22 |
-| Validation testing screenshots collected | T10, T11 *(already captured)*, T12 |
-| Database screenshots collected | every shot above — the `cart_items` table must be in frame |
-
-| Filename | Test | What must be in frame |
-| --- | --- | --- |
-| `T03-create-add-item.png` | T03 | Cart drawer showing Claw Hammer ×1, and the new `cart_items` row (cart 1, product 2, qty 1) |
-| `T04-create-add-same-item.png` | T04 | Drawer showing qty 2, and `cart_items` with **one** row at qty 2 — not two rows |
-| `T05-update-increase.png` | T05 | Drawer showing the raised quantity and new line total, and the matching `quantity` in the table |
-| `T06-update-decrease.png` | T06 | Drawer after clicking **−**, quantity reduced by one, table matching |
-| `T07-delete-remove.png` | T07 | Drawer with the item gone, and `cart_items` with no row for that product |
-| `T08-delete-to-zero.png` | T08 | Drawer after **−** on a qty-1 item: item removed, row deleted |
-| `T12-validation-bad-quantity.png` | T12 | Thunder Client or Postman showing the PATCH with `quantity: -1` and the 400 response |
-| `T13-error-product-missing.png` | T13 | POST with `product_id: 999` returning 404 "Product not found" |
-| `T14-error-cart-missing.png` | T14 | `GET /api/carts/999/items` returning 404 "Cart not found" |
-| `T17-npm-test-pass.png` | T17 | Terminal showing `# pass 77` and `# fail 0` |
-| `T18-github-actions-green.png` | T18 | The Actions tab with both workflows green |
-| `T22-logout-401.png` | T22 | After logout, the old token returning 401 from `/auth/verify` |
-
-Once captured, tick the last two boxes in `crud-evidence.md`.
+**One shot still needs a team member:** `T18-github-actions-green.png` — the repository's
+Actions tab showing both workflows green. It needs a signed-in browser session, so it
+cannot be captured automatically. Open the Actions tab, pick the most recent run on
+`main`, screenshot it, and save it under that name.

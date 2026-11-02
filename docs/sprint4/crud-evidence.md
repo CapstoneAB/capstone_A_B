@@ -224,14 +224,34 @@ display the updated cart to the user.
 - [x] Read functionality implemented and tested
 - [x] Update functionality implemented and tested
 - [x] Delete functionality implemented and tested
-- [x] GitHub commits completed — 73 commits on `main`
+- [x] CRUD screenshots collected — `T03`–`T07`
+- [x] API testing screenshots collected — `T12`
+- [x] Validation testing screenshots collected — `T10`, `T10b`, `T11`, `T12`
+- [x] Database screenshots collected — the `cart_items` table appears in every CRUD shot
+- [x] GitHub commits completed
 - [x] GitHub repository updated
 - [x] Documentation updated
-- [ ] CRUD screenshots collected — **outstanding**
-- [ ] API testing screenshots collected — **outstanding**
-- [ ] Validation testing screenshots collected — **outstanding**
-- [ ] Database screenshots collected — **outstanding**
 
-The four outstanding items all require screenshots. The API responses and validation
-results above are captured as text, which is evidence but is **not** what the workbook
-asks for. The shot list is in [`demo-runbook.md`](demo-runbook.md).
+All eleven boxes are closed. Screenshots are in [`../screenshots/`](../screenshots/),
+named by test ID.
+
+### Screenshot index
+
+| File | Shows |
+| --- | --- |
+| `T03-create-add-item.png` | Create — one row written, product 2 quantity 1 |
+| `T04-create-add-same-item.png` | Create again — still one row, quantity raised to 2 |
+| `T05-update-increase.png` | Update — quantity 5, line total $124.75, GST $11.34 |
+| `T06-update-decrease.png` | Update — quantity decreased to 4 |
+| `T07-delete-remove.png` | Delete — drawer empty, `cart_items` has no rows |
+| `T10b-validation-stock-limit.png` | Validation — 4th Safety Glasses refused, table stays at 3 |
+| `T12-api-testing-responses.png` | API testing — all four CRUD calls plus 400 and two 404 cases |
+| `T17-npm-test-pass.png` | `npm test` — 77 tests, 77 pass, 0 fail |
+
+Each CRUD shot is a single image with the live page on top and the `cart_items` table
+underneath, so the page value and the stored value can be compared directly.
+
+### Still to capture by hand
+
+- `T18` — the GitHub Actions tab showing both workflows green. This needs a signed-in
+  browser session, so it has to be taken by a team member.
