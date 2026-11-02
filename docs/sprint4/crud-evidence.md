@@ -123,11 +123,12 @@ $ curl -X DELETE localhost:3100/api/carts/1/items/2
 
 | Scenario | What was sent | Status | Message returned | Database |
 | --- | --- | --- | --- | --- |
-| Blank input field | `quantity` omitted | 400 | quantity must be a positive integer | Unchanged |
-| Missing information | empty request body | 400 | product_id and quantity are required | Unchanged |
-| Invalid data type | `quantity: "abc"` or `-2` | 400 | quantity must be a positive integer | Unchanged |
-| Incorrect product id | `product_id: 999` | 404 | Product not found | Unchanged |
-| Incorrect cart id | cart `999` | 404 | Cart not found | Unchanged |
+| Blank input field | `quantity` omitted | 400 | `product_id must be a positive integer and quantity must be a positive integer` | Unchanged |
+| Missing information | empty request body | 400 | *(same message as above)* | Unchanged |
+| Invalid data type | `quantity: "abc"` or `-2` | 400 | *(same message as above)* | Unchanged |
+| Incorrect product id | `product_id: 999` | 404 | `Product not found` | Unchanged |
+| Incorrect cart id | cart `999` | 404 | `Cart not found` | Unchanged |
+| Incorrect cart item | `PATCH` a product not in the cart | 404 | `Cart item not found` | Unchanged |
 | Duplicate record | same product added twice | 201 | No duplicate row — existing quantity raised | 1 row, qty 2 |
 | Over the stock limit | 4 × Safety Glasses (stock 3) | 409 | Requested quantity exceeds available stock | Stays at 3 |
 | Over the 20-item cap | 21 × Bolt (stock 50) | 400 | Maximum quantity per item is 20 | Stays at 20 |
@@ -135,11 +136,19 @@ $ curl -X DELETE localhost:3100/api/carts/1/items/2
 | Unknown email | email not registered | 401 | Invalid email or password | No session |
 | Server unreachable | API stopped mid-session | — | Could not reach the server | Unchanged |
 
+The first three scenarios return the **same** message. The `POST` handler validates
+`product_id` and `quantity` in a single condition, so a blank field, a missing field and a
+wrong data type are reported identically. Improving these messages to name the specific
+offending field is listed under future improvements.
+
 Captured live:
 
 ```
-$ curl -X POST localhost:3100/api/carts/1/items -d '{"product_id":2,"quantity":-1}'
-{"error":"product_id must be a positive integer and quantity must be a positive integer"}
+$ curl -X POST localhost:3101/api/carts/1/items -d '{"product_id":2}'
+HTTP 400 {"error":"product_id must be a positive integer and quantity must be a positive integer"}
+
+$ curl -X POST localhost:3101/api/carts/1/items -d '{"product_id":2,"quantity":"abc"}'
+HTTP 400 {"error":"product_id must be a positive integer and quantity must be a positive integer"}
 
 $ curl localhost:3100/api/carts/999/items
 {"error":"Cart not found"}
@@ -215,10 +224,14 @@ display the updated cart to the user.
 - [x] Read functionality implemented and tested
 - [x] Update functionality implemented and tested
 - [x] Delete functionality implemented and tested
-- [x] API testing evidence collected — responses captured above
-- [x] Validation testing evidence collected — table above
 - [x] GitHub commits completed — 73 commits on `main`
 - [x] GitHub repository updated
 - [x] Documentation updated
-- [ ] CRUD screenshots collected — **outstanding**, see `demo-runbook.md` for the shot list
-- [ ] Database screenshots collected — **outstanding**, same shot list
+- [ ] CRUD screenshots collected — **outstanding**
+- [ ] API testing screenshots collected — **outstanding**
+- [ ] Validation testing screenshots collected — **outstanding**
+- [ ] Database screenshots collected — **outstanding**
+
+The four outstanding items all require screenshots. The API responses and validation
+results above are captured as text, which is evidence but is **not** what the workbook
+asks for. The shot list is in [`demo-runbook.md`](demo-runbook.md).
