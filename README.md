@@ -6,7 +6,9 @@ Features
 
     Home page with hero section and feature highlights
     About page with project overview, description, and the team's delivery plan
-    Shop page - the Shopping Cart module: products loaded from the database, add to cart, cart drawer, quantity controls and GST-inclusive totals. Every cart change is saved in the database through the cart API
+    Shop page - the Shopping Cart module: products loaded from the database, a category filter, add to cart, cart drawer, quantity controls and GST-inclusive totals. Every cart change is saved in the database through the cart API. Guests share a guest cart; a logged-in user gets their own cart that is kept between logins
+    Checkout - a logged-in user's cart becomes an order. The server checks stock again, saves the order and its items, takes the stock and empties the cart
+    My Orders page - order history with filters (status, date, total), pages, an expandable item list for each order, and cancelling an order that is still Placed (the stock goes back)
     Contact page with name, email, subject, and message fields
     Login page connected to the auth API: log in, stay logged in across pages in the same tab, and log out. The Forgot password link has no page yet (the API for it exists)
     Registration page with real-time validation: username and email checks, a password strength meter, a live checklist of the password rules and a confirm password field. It creates the account through the backend auth API
@@ -22,16 +24,20 @@ capstone_A_B/
 ├── contact.html       # Contact page
 ├── login.html         # Login page (sends the form to POST /auth/login)
 ├── register.html      # Registration page (sends the form to POST /auth/register)
+├── orders.html        # My Orders page (order history, details, cancel)
 ├── css/style.css      # Shared stylesheet
 ├── css/login.css      # Login page styles
 ├── css/register.css   # Registration page styles (strength meter, rules checklist)
+├── css/orders.css     # My Orders page styles
 ├── js/login.js        # Login form validation, login and logout API calls
 ├── js/register.js     # Registration form validation and API call
+├── js/orders.js       # Loads, filters, pages and cancels orders through the order API
 ├── TESTING.md         # Sprint 4 integrated test plan, cart and account tests
 ├── intro_ranjan.txt   # Introduction file
 ├── docs/              # Week 2 data analysis, Week 4 data dictionary, Sprint 4 ERD and database design, test screenshots
-├── backend/           # Sprint 3 Node.js + SQLite cart API
-│   ├── server.js      # Express server and cart routes
+├── backend/           # Node.js + Express + SQLite API
+│   ├── server.js      # Express server: product, cart and order routes
+│   ├── schema.js      # Creates the products, carts, cart_items, orders and order_items tables and indexes
 │   ├── init-db.js     # Creates buildmart.db and loads the 8 products (--reset rebuilds it)
 │   ├── auth/          # User accounts
 │   │   ├── schema.js      # Creates the users, revoked_tokens and password_resets tables
@@ -92,7 +98,7 @@ To run the tests, go into backend and run npm test (after npm install and npm ru
 
 There are 20 API tests in backend/tests/cart.test.js. They cover the health check, the product list, adding, updating and removing cart items, totals and GST, bad input (zero, negative or non-number quantities), missing carts, products and items, stock limits and the 20-item quantity cap.
 
-There are also 45 tests in backend/tests/auth.test.js (password hashing, register, login, verify, logout and password reset) and 7 tests in backend/tests/static.test.js (which files the server will and will not serve), and 5 tests in backend/tests/seed.test.js (the seed data and reset-db), so 77 tests in total. See TESTING.md for the full list.
+There are also 45 tests in backend/tests/auth.test.js (password hashing, register, login, verify, logout and password reset), 7 tests in backend/tests/static.test.js (which files the server will and will not serve), 5 tests in backend/tests/seed.test.js (the seed data and reset-db) and 23 tests in backend/tests/orders.test.js (the product API, carts linked to accounts, checkout, order history, filters and cancelling), so 100 tests in total. See TESTING.md for the full list.
 
 GitHub Actions (.github/workflows/backend-tests.yml) runs the tests automatically on every push and pull request to main.
 
@@ -107,27 +113,48 @@ How the System Works (Frontend - Backend - Database)
     The backend reads the cart back from the database, works out the line subtotals, total and GST, and returns JSON
     The page redraws the cart drawer from that JSON, or shows the error message in a pop-up if the request failed
 
-CRUD in the shopping cart
+CRUD in the system
 
-    Create  - Add to cart          POST   /api/carts/1/items
-    Read    - Products and cart    GET    /api/products, GET /api/carts/1/items
-    Update  - + / - quantity       PATCH  /api/carts/1/items/:productId
-    Delete  - Remove item          DELETE /api/carts/1/items/:productId
+    Create  - Add to cart                POST   /api/carts/:id/items
+              Place an order (checkout)  POST   /api/orders
+              Register an account        POST   /auth/register
+    Read    - Products, categories       GET    /api/products, /api/products/:id, /api/categories
+              Cart                       GET    /api/carts/:id/items, /api/my-cart
+              Orders                     GET    /api/users/:id/orders, /api/orders/:orderId
+    Update  - + / - quantity             PATCH  /api/carts/:id/items/:productId
+              Cancel an order            PATCH  /api/orders/:orderId
+    Delete  - Remove item                DELETE /api/carts/:id/items/:productId
 
 Backend API
 
     GET    /                                health check
-    GET    /api/products                    list products
+    GET    /api/products                    list products; optional ?category=Tools, ?page=1&limit=4 (X-Total-Count header gives the full count)
+    GET    /api/products/:id                one product (404 if missing)
+    GET    /api/products/category/:category products in one category (any letter case)
+    GET    /api/categories                  each category with its product count
+    GET    /api/my-cart                     the logged-in user's own cart (made the first time); needs a login token
     GET    /api/carts/:id/items             cart items, line subtotals, gst_included and total
     POST   /api/carts/:id/items             body {"product_id": 1, "quantity": 2}; adds or increases quantity
     PATCH  /api/carts/:id/items/:productId  body {"quantity": 5}; sets quantity
     DELETE /api/carts/:id/items/:productId  removes the item
 
+Cart 1 is the guest cart and needs no login. A cart that belongs to an account needs that account's token: no token returns 401, another user's token returns 403.
+
 Prices are GST-inclusive, matching shop.html, so gst_included is total minus total / 1.1.
 Errors: 400 for bad input, 404 for a missing cart or product, 409 when quantity is more than stock.
 A quantity over 20 per item returns 400 (same limit as the front end).
 
-Database tables: products, carts, cart_items, users, password_resets, revoked_tokens. The ERD and full data dictionary are in docs/sprint4/database-design.md.
+Order API (all need a login token)
+
+    POST   /api/orders                      checkout: turns the user's cart into an order
+    GET    /api/orders/:orderId             one order with its items (another user's order returns 404)
+    PATCH  /api/orders/:orderId             body {"status": "Cancelled"}; only while the order is Placed, and the stock goes back
+    GET    /api/users/:id/orders            order history, newest first; filters status, from, to (YYYY-MM-DD), min_total, max_total, page, limit
+
+Checkout errors: 400 if the cart is empty, 409 if a product no longer has enough stock (nothing is saved and no stock changes, because checkout runs in one database transaction).
+Each order item keeps the product name and price at the time of the order, so later price changes don't change old orders.
+
+Database tables: products, carts, cart_items, orders, order_items, users, password_resets, revoked_tokens. The ERD and full data dictionary are in docs/sprint4/database-design.md.
 
 Auth API
 
@@ -181,13 +208,15 @@ Security
     After a password reset, every login token issued before the reset stops working
     JWT_SECRET comes from the environment and is never in the code. The server refuses to start in production without it
     Passwords and tokens are never put in a URL
+    A customer can only see and change their own cart and orders
     The backend only serves the root .html pages and the css and js folders. backend/ (code and buildmart.db), node_modules, .git, docs and dotfiles are never served
 
 Known Limitations and Future Improvements
 
-    One shared cart: the shop page always uses cart 1, and carts are not linked to user accounts yet (issue #39)
-    Orders: checkout empties the saved cart but does not record an order or lower stock (issues #40, #44, #45)
-    Product API: no single-product, category or paging routes yet, and the search box is not connected (issue #38)
+    Guest to user cart merge: items in the guest cart are not moved into the user's cart when they log in
+    Orders: no payment (Stripe or PayPal), no confirmation email and no invoice download yet. Order status only changes by cancelling; there is no staff page to mark orders Shipped or Delivered
+    Product API: products have icons, not photos, and the search box is not connected
+    User roles: there are customers only, no admin or staff accounts
     Password reset: the API works, but there is no page for it and no email service
     The GitHub Pages site has no backend, so the shop only works from http://localhost:3000. Hosting the backend would fix this
 
