@@ -65,6 +65,15 @@ demonstration plus testing evidence are worth 9 marks between them.
 Capture each shot with **the browser and the `cart_items` table both visible**, and save it
 to `docs/screenshots/` under the filename given.
 
+These shots close all four outstanding boxes on the workbook's evidence checklist:
+
+| Workbook checklist item | Shots that satisfy it |
+| --- | --- |
+| CRUD screenshots collected | T03, T04, T05, T06, T07, T08 |
+| API testing screenshots collected | T12, T13, T14, T22 |
+| Validation testing screenshots collected | T10, T11 *(already captured)*, T12 |
+| Database screenshots collected | every shot above — the `cart_items` table must be in frame |
+
 | Filename | Test | What must be in frame |
 | --- | --- | --- |
 | `T03-create-add-item.png` | T03 | Cart drawer showing Claw Hammer ×1, and the new `cart_items` row (cart 1, product 2, qty 1) |
