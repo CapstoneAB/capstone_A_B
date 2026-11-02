@@ -32,8 +32,8 @@ login, logout and password reset.
 ## Database questions
 
 **4. How many entities are included in your ERD?**
-**Six.** `products`, `carts`, `cart_items`, `users`, `password_resets` and
-`revoked_tokens`.
+**Eight.** `products`, `carts`, `cart_items`, `orders`, `order_items`, `users`,
+`password_resets` and `revoked_tokens`.
 
 **5. What is a primary key?**
 A column that uniquely identifies each row in a table — no two rows can share a value and
@@ -75,12 +75,13 @@ and every query uses a prepared statement — `db.prepare(...).get()` or `.all()
 `better-sqlite3` is synchronous, which kept the route handlers simple to read.
 
 **11. What API endpoints were created?**
-Five cart endpoints providing full CRUD — `GET /api/products`,
-`GET /api/carts/:id/items`, `POST /api/carts/:id/items`,
-`PATCH /api/carts/:id/items/:productId`, `DELETE /api/carts/:id/items/:productId` — and
-six auth endpoints: `POST /auth/register`, `/auth/login`, `/auth/logout`,
-`GET /auth/verify`, `POST /auth/forgot-password` and `/auth/reset-password`. Plus a
-health check at `GET /`.
+Nineteen, plus a health check at `GET /`. Three product endpoints (`/api/products`,
+`/api/products/:id`, `/api/categories`), four cart endpoints covering full CRUD
+(`GET`/`POST` `/api/carts/:id/items`, `PATCH`/`DELETE` `.../:productId`) plus
+`GET /api/my-cart`, four order endpoints (`POST /api/orders` for checkout,
+`GET /api/users/:id/orders`, `GET`/`PATCH` `/api/orders/:orderId`), and six auth
+endpoints (`register`, `login`, `logout`, `verify`, `forgot-password`,
+`reset-password`).
 
 **12. Why did you choose your technology stack?**
 Our data is strongly relational — a cart line is meaningless without its cart and its
@@ -121,7 +122,7 @@ anything written to the database.
 ## Testing questions
 
 **17. How did you test CRUD functionality?**
-Three ways. 77 automated tests via `npm test`, of which 20 cover cart CRUD directly. 25
+Three ways. 100 automated tests via `npm test`, of which 20 cover cart CRUD directly and 23 cover orders and checkout. 25
 manual integration tests recorded in `TESTING.md`, run against the real pages with the
 database open beside them. And direct API testing with curl, captured in
 `docs/sprint4/crud-evidence.md`.
@@ -172,13 +173,14 @@ back-end and integration work as the API and accounts were built.
 ## Future improvement questions
 
 **25. What would you improve with more development time?**
-First, link `carts` to `users` so each customer has their own cart rather than the one
-shared cart the shop uses now. That single change unblocks most of the rest.
+Payment. Checkout writes a real order and decrements stock inside a transaction, but
+nothing is actually charged. Adding Stripe, then a confirmation email, is what turns this
+from a working prototype into something a store could use.
 
 **26. What additional features would you add?**
-An `orders` and `order_items` pair so checkout records a real order and decrements stock
-inside a transaction; the forgot-password page, since the API already exists; and an
-order history view.
+Merging a guest cart into the account's cart on login; a staff role with an order
+management page so orders can be marked Shipped or Delivered; the forgot-password page,
+since the API already exists; and invoice download from the order history page.
 
 **27. How could security be enhanced?**
 Rate-limit the login endpoint to slow brute-force attempts; move the JWT from
@@ -198,9 +200,9 @@ be dropped in — email confirmations, and a move to MySQL or PostgreSQL for mul
 Presenting a known limitation as a deliberate scope decision reads as engineering
 maturity. Being caught by one reads as an oversight.
 
-1. **`carts` is not linked to `users`.** The shop uses one shared cart (cart 1), so the
-   cart is saved in the database but does not belong to a logged-in account.
-2. **There is no `orders` table.** Checkout clears the cart and reports a demo checkout;
-   no order is recorded.
-3. **Stock never decreases.** It is checked when items are added, but nothing decrements
-   it, because orders do not exist yet.
+1. **No payment or email.** Checkout records a real order and takes stock, but there is
+   no Stripe or PayPal step, no confirmation email and no invoice download.
+2. **A guest cart is not merged on login.** If someone builds a cart as a guest and then
+   logs in, those items are not moved into their account's cart.
+3. **Customers only, no staff role.** Order status changes only by the customer
+   cancelling; there is no staff page to mark an order Shipped or Delivered.

@@ -30,17 +30,20 @@ the `cart_items` table.
 - [ ] Browser zoom at 100%, console closed
 - [ ] **Do not click "Forgot password?"** — it is a Version 2 placeholder (`href="#"`)
 
-## The seven steps
+## The eight steps
+
+Register a demo account **before** you present, so step 2 is a login rather than a signup.
 
 | # | Operation | Action | What to point out |
 | --- | --- | --- | --- |
-| 1 | **Read** | Open the shop | 8 products with price, unit and stock — all from SQLite, none hard-coded |
-| 2 | **Create** | Add Claw Hammer to cart | Toast appears, badge shows 1, **press F5 in DB Browser** — a new row in `cart_items` |
-| 3 | **Read** | Refresh the browser page | The cart is still there. This proves it lives in the database, not the browser |
-| 4 | **Update** | Click **+** until quantity is 5 | Line total $124.75, GST included $11.34. F5 — `quantity` is now 5 |
-| 5 | **Delete** | Click **Remove** | Line disappears from the drawer. F5 — the row is gone from `cart_items` |
-| 6 | **Validate** | Add Safety Glasses 4 times | Stock is 3. The 4th is refused: "Requested quantity exceeds available stock". F5 — still 3 |
-| 7 | **Accounts** | Register, then log in | In DB Browser open `users` — `password_hash` begins `$2b$12$`. The password itself is never stored |
+| 1 | **Read** | Open the shop | 8 products with price, unit and stock — all from SQLite. Try the category filter |
+| 2 | **Accounts** | Log in | Header shows the account; the cart is now saved to it. Check `carts.user_id` in the database |
+| 3 | **Create** | Add two products | New rows in `cart_items`, linked to this user's cart. **F5 in DB Browser** |
+| 4 | **Update** | Click **+** on a line | Line total and GST recalculate; `quantity` changes in the table |
+| 5 | **Delete** | Click **Remove** | The row disappears from `cart_items` |
+| 6 | **Validate** | Add Safety Glasses 4 times | Stock is 3; the 4th is refused with 409 and the table stays at 3 |
+| 7 | **Checkout** | Click **Checkout** | **The strongest moment.** An `orders` row appears, `order_items` copies the prices, `products.stock` drops, and the cart empties — all in one transaction |
+| 8 | **Read** | Open **My Orders** | The order reads back with its status, total and lines |
 
 **If something fails:** stop, say "that is the stock validation working / let me reset",
 run `npm run reset-db`, restart and continue. Do not debug live.

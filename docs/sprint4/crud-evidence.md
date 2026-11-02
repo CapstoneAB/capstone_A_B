@@ -3,7 +3,8 @@
 **Project:** Buildmart Secure Retail System
 **Group:** Group 2 · Group Leader: Ranjan
 **Repository:** https://github.com/CapstoneAB/capstone_A_B
-**Verified:** 2 November 2026, against the running server on `http://localhost:3100`
+**Verified:** 2 November 2026, against the running server. Re-checked after the Sprint 4
+merge, which added orders, product categories and user-owned carts.
 
 This record completes the evidence checklist in the Sprint Weeks 8 & 9 CRUD workbook.
 Every response below was captured from the live API, not written by hand.
@@ -165,20 +166,21 @@ have accounts, so both paths answer identically.
 ```
 $ cd backend && npm test
 
-1..77
-# tests 77
+1..100
+# tests 100
 # suites 0
-# pass 77
+# pass 100
 # fail 0
 ```
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
 | `auth.test.js` | 45 | Hashing, register, login, verify, logout, password reset |
+| `orders.test.js` | 23 | Checkout, stock, order history, cancel, access control |
 | `cart.test.js` | 20 | Full CRUD, stock limits, the 20-item cap, totals and GST |
 | `static.test.js` | 7 | Page serving and path-traversal defence |
 | `seed.test.js` | 5 | The 8 seeded products and cart 1 |
-| **Total** | **77** | **All passing** |
+| **Total** | **100** | **All passing** |
 
 Each test file creates its own temporary database, so `buildmart.db` is never modified by
 a test run.
@@ -246,7 +248,10 @@ named by test ID.
 | `T07-delete-remove.png` | Delete — drawer empty, `cart_items` has no rows |
 | `T10b-validation-stock-limit.png` | Validation — 4th Safety Glasses refused, table stays at 3 |
 | `T12-api-testing-responses.png` | API testing — all four CRUD calls plus 400 and two 404 cases |
-| `T17-npm-test-pass.png` | `npm test` — 77 tests, 77 pass, 0 fail |
+| `T17-npm-test-pass.png` | `npm test` — all tests passing |
+| `T30-user-cart-linked.png` | The cart linked to the logged-in account |
+| `T33-checkout-creates-order.png` | Checkout — `orders` and `order_items` written, stock decremented |
+| `T37-order-history-with-database.png` | Order history read back, with the `orders` table beside it |
 
 Each CRUD shot is a single image with the live page on top and the `cart_items` table
 underneath, so the page value and the stored value can be compared directly.
