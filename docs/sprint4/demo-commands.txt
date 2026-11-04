@@ -1,161 +1,36 @@
-================================================================
-BUILDMART LIVE DEMO - COPY AND PASTE SHEET
-Windows / PowerShell. Copy one line at a time.
-================================================================
-
-
-----------------------------------------------------------------
-ONE TIME ONLY - do this days before, not on the day
-----------------------------------------------------------------
+WINDOW 1  (server - open first, then leave alone)
 
 cd C:\Users\chaul\Desktop\capstone_A_B\backend
-
-npm install
-
-
-----------------------------------------------------------------
-ON THE DAY - WINDOW 1  (the server. Open this FIRST)
-----------------------------------------------------------------
-
-cd C:\Users\chaul\Desktop\capstone_A_B\backend
-
 npm run reset-db
-
 npm start
 
-*** LEAVE THIS WINDOW ALONE AFTER THIS ***
-*** Do not type in it. Do not close it. It will look frozen. ***
-*** Wait until it says: Buildmart backend running at http://localhost:3000
 
-
-----------------------------------------------------------------
-ON THE DAY - WINDOW 2  (everything else. Win+X then I)
-----------------------------------------------------------------
+WINDOW 2  (everything else)
 
 cd C:\Users\chaul\Desktop\capstone_A_B\backend
-
 npm test
 
-   (you want to see:  # pass 100    # fail 0)
 
-
-----------------------------------------------------------------
-BROWSER ADDRESSES - paste into the address bar
-----------------------------------------------------------------
+BROWSER
 
 http://localhost:3000/shop.html
-
 http://localhost:3000/register.html
-
 http://localhost:3000/login.html
-
 http://localhost:3000/orders.html
 
 
-----------------------------------------------------------------
-DEMO ACCOUNT - register this BEFORE you present
-----------------------------------------------------------------
-
-Username:  demo_customer
-
-Email:     demo@buildmart.test
-
-Password:  Str0ng!Pass1
-
-
-----------------------------------------------------------------
-DB BROWSER FOR SQLITE
-----------------------------------------------------------------
-
-Open DB Browser  ->  click "Open Database"  ->  click into the
-File name box at the bottom  ->  paste this line  ->  press Enter:
+DB BROWSER  (paste into the File name box)
 
 C:\Users\chaul\Desktop\capstone_A_B\backend\buildmart.db
 
-Then:  Browse Data tab  ->  Table dropdown  ->  cart_items
 
-PRESS F5 AFTER EVERY SINGLE CLICK. It never refreshes by itself.
+LOGIN
 
-
-----------------------------------------------------------------
-THE 8 STEPS   (Diya clicks, Kalyan narrates)
-----------------------------------------------------------------
-
-STEP 1  READ
-  Open the shop, change the Category dropdown
-  Table to show: products
-  Say: "Eight products, read from SQLite. Nothing hard-coded."
-
-STEP 2  ACCOUNTS
-  Log in as demo_customer
-  Table to show: carts     (user_id is now filled in)
-  Say: "The cart now belongs to this account."
-
-STEP 3  CREATE
-  Add 2 different products to the cart
-  Table to show: cart_items     (2 rows)
-  Say: "Two new rows, linked to that cart."
-
-STEP 4  UPDATE
-  Click + on one cart line
-  Table to show: cart_items     (quantity changed)
-  Say: "A PATCH went to the API. The total came back recalculated."
-
-STEP 5  DELETE
-  Click Remove on a line
-  Table to show: cart_items     (row gone)
-  Say: "The row is gone. Not hidden - deleted."
-
-STEP 6  VALIDATE
-  Add Safety Glasses 4 times
-  Table to show: cart_items     (quantity stays at 3)
-  Say: "Stock is three. The server refused the fourth with a 409."
-
-STEP 7  CHECKOUT   *** THE ONE THAT EARNS THE MARKS - GO SLOW ***
-  Click Checkout
-  Tables to show, one after the other:
-      orders          (new row, status Placed)
-      order_items     (the lines, with the price paid)
-      products        (stock has dropped)
-  Say: "One click, three tables. All in one transaction."
-
-STEP 8  READ
-  Click My Orders
-  Table to show: orders
-  Say: "The same order, read back from the API."
+demo_customer
+demo@buildmart.test
+Str0ng!Pass1
 
 
-----------------------------------------------------------------
-IF SOMETHING BREAKS
-----------------------------------------------------------------
+FIRST TIME ONLY
 
-Shop page is empty
-   You opened the file. Use http://localhost:3000/shop.html
-
-"Could not reach the server"
-   Window 1 was closed. In window 1 run:  npm start
-
-Port 3000 already in use
-   Close ALL PowerShell windows, then start window 1 again
-
-Cart has leftover junk from rehearsing
-   Window 1: press Ctrl+C
-   Window 1: npm run reset-db
-   Window 1: npm start
-
-Anything else
-   Say "let me reset", run reset-db, carry on.
-   NEVER debug in front of the marker.
-
-
-----------------------------------------------------------------
-NEVER DO THESE
-----------------------------------------------------------------
-
-Do NOT click "Forgot password?"   - it is a Version 2 placeholder
-Do NOT close the window running npm start
-Do NOT edit cells in DB Browser. If a "Write Changes" button
-   lights up, click "Revert Changes"
-Do NOT demo anything that is not in the 8 steps above
-
-================================================================
+npm install
